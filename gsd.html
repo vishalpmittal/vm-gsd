@@ -1,0 +1,1382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GSD — Getting Stuff Done</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 44 44'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%235b8dff'/><stop offset='.55' stop-color='%232f6feb'/><stop offset='1' stop-color='%238b5cf6'/></linearGradient></defs><rect x='1.5' y='1.5' width='41' height='41' rx='12' fill='url(%23g)'/><path d='M12 22.5 L19 29.5 L33 14.5' fill='none' stroke='%23fff' stroke-width='4.2' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+<style>
+  :root {
+    --bg: #f6f7f9; --panel: #ffffff; --ink: #1c2024; --muted: #6b7280;
+    --line: #e5e7eb; --accent: #2f6feb; --accent-ink:#fff;
+    --chip: #eef2ff; --chip-ink:#3949ab;
+    --p-high:#e5484d; --p-med:#e08a00; --p-low:#3aa675;
+    --done-bg:#f0f2f4; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 14px rgba(0,0,0,.05);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0f1216; --panel:#171b21; --ink:#e6e9ee; --muted:#9aa4b2;
+      --line:#262c34; --accent:#5b8dff; --accent-ink:#0b0d10;
+      --chip:#1e2430; --chip-ink:#9db4ff;
+      --done-bg:#12161b; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  /* clip the off-canvas drawers (translateX(100%)) so they can't create phantom
+     horizontal scroll / blank space to the right */
+  html { overflow-x: hidden; }
+  body {
+    margin:0; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--bg); color: var(--ink);
+  }
+  header {
+    position: sticky; top:0; z-index:5; background: var(--panel);
+    border-bottom:1px solid var(--line); padding: 12px 20px;
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap; box-shadow: var(--shadow);
+  }
+  .brand { display:flex; align-items:center; gap:11px; text-decoration:none; color:inherit; }
+  .brand .logo { display:flex; filter: drop-shadow(0 2px 5px rgba(47,111,235,.35)); transition: transform .15s ease; }
+  .brand:hover .logo { transform: translateY(-1px) rotate(-3deg); }
+  .brand-text { display:flex; flex-direction:column; line-height:1.1; }
+  .brand-title { font-size:17px; font-weight:600; letter-spacing:.2px; }
+  .brand-title b {
+    font-weight:800;
+    background: linear-gradient(120deg, #5b8dff, #2f6feb 45%, #8b5cf6);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    letter-spacing:.5px; margin-right:1px;
+  }
+  .brand-text small { color:var(--muted); font-weight:500; font-size:11px; letter-spacing:.3px; }
+  .brand-sub { cursor:help; }
+  .spacer { flex:1; }
+  .wrap { max-width: 1080px; margin: 20px auto; padding: 0 20px 60px; }
+  .status { font-size:12px; color:var(--muted); }
+  .status b { color: var(--ink); }
+
+  button, select, input, textarea {
+    font: inherit; color: inherit; background: var(--panel);
+    border:1px solid var(--line); border-radius: 8px; padding: 7px 10px;
+  }
+  button { cursor:pointer; background: var(--panel); }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; font-weight:600; }
+  button.ghost { background: transparent; }
+  button.danger { color: var(--p-high); }
+  .btnrow { display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* floating add button */
+  .fab {
+    position:fixed; right:24px; bottom:24px; width:56px; height:56px; border-radius:50%;
+    font-size:30px; line-height:1; font-weight:400; background:var(--accent); color:var(--accent-ink);
+    border:none; box-shadow:0 6px 20px rgba(0,0,0,.28); z-index:20;
+    display:flex; align-items:center; justify-content:center; padding:0;
+  }
+  .fab:hover { filter:brightness(1.06); border:none; }
+  .fab:active { transform:scale(.95); }
+
+  .modal-x { font-size:16px; padding:4px 9px; line-height:1; }
+
+  /* right detail pane (drawer) */
+  .pane-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.28); z-index:24; display:none; }
+  .pane-backdrop.open { display:block; }
+  .pane {
+    position:fixed; top:0; right:0; height:100vh; width:400px; max-width:92vw;
+    background:var(--panel); border-left:1px solid var(--line);
+    box-shadow:-8px 0 28px rgba(0,0,0,.18); z-index:25;
+    transform:translateX(100%); transition:transform .18s ease;
+    display:flex; flex-direction:column;
+  }
+  .pane.open { transform:translateX(0); }
+  .pane-head { display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border-bottom:1px solid var(--line); }
+  .pane-head h2 { margin:0; font-size:15px; }
+  .pane-body { padding:16px; overflow:auto; flex:1; display:flex; flex-direction:column; gap:12px; }
+  .pane-body .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .pane-meta { font-size:12px; color:var(--muted); margin-top:2px; }
+  .pane-foot { padding:14px 16px; border-top:1px solid var(--line); display:flex; gap:8px; justify-content:space-between; align-items:center; }
+  label { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); margin-bottom:4px; }
+  input, select, textarea { width:100%; }
+  textarea { resize: vertical; min-height:38px; }
+
+  /* toolbar */
+  .toolbar { display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px; }
+  .toolbar .field { display:flex; align-items:center; gap:6px; }
+  .toolbar label { margin:0; }
+  .search { min-width:200px; flex:1; }
+  /* hamburger trigger + in-menu legend section */
+  .hamburger { font-size:18px; line-height:1; padding:6px 11px; }
+  .menu-item.legend-toggle { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .menu-caret { color:var(--muted); font-size:11px; }
+  .legend-block { padding:8px 10px 6px; }
+  .lg-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; font-size:12px; }
+  .lg-list li { display:flex; align-items:center; gap:9px; color:var(--muted); white-space:nowrap; }
+  .lg-list li b { color:var(--ink); font-weight:600; }
+  .lg-sw { flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; }
+  .lg-bar { width:6px; height:16px; border-radius:2px; }
+  .lg-dot { width:9px; height:9px; border-radius:50%; }
+  .lg-pill { font-size:10px; padding:1px 8px; border-radius:999px; background:var(--chip); color:var(--chip-ink); }
+  .lg-badge { font-size:9px; font-weight:700; letter-spacing:.6px; padding:1px 6px; border-radius:5px;
+    background:color-mix(in srgb, var(--muted) 15%, transparent); color:var(--muted); }
+  .lg-chip { font-size:10px; padding:1px 7px; border-radius:999px; border:1px solid currentColor; }
+
+  /* list */
+  ul.todos { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  li.todo {
+    display:flex; align-items:center; gap:12px;
+    padding:8px 12px; border:1px solid var(--line); border-radius: var(--radius);
+    background: var(--panel); box-shadow: var(--shadow);
+    border-left:8px solid var(--line); cursor:pointer; position:relative;
+  }
+  li.todo:hover { border-color: var(--muted); }
+  /* custom description tooltip — appears in ~half the native title delay */
+  li.todo[data-desc]::after {
+    content: attr(data-desc);
+    position:absolute; left:16px; top:calc(100% - 2px); z-index:30;
+    width:max-content; max-width:min(520px,80vw);
+    background:var(--ink); color:var(--panel);
+    padding:7px 10px; border-radius:8px; font-size:12px; font-weight:500;
+    line-height:1.4; white-space:normal; box-shadow:var(--shadow);
+    opacity:0; pointer-events:none; transition:opacity .12s ease; transition-delay:0s;
+  }
+  li.todo[data-desc]:hover::after { opacity:1; transition-delay:.25s; }
+  li.todo.selected { outline:2px solid var(--accent); outline-offset:-1px; }
+  li.todo.p-High { border-left-color: var(--p-high); }
+  li.todo.p-Medium { border-left-color: var(--p-med); }
+  li.todo.p-Low { border-left-color: var(--p-low); }
+  li.todo.done { background: var(--done-bg); opacity:.72; }
+  li.todo.done .title { text-decoration: line-through; }
+  .check { width:18px; height:18px; flex:0 0 auto; cursor:pointer; }
+  .main { display:flex; align-items:center; gap:10px; flex:1 1 auto; min-width:0; }
+  .title { font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:0 1 auto; min-width:60px; }
+  .meta { display:flex; gap:6px; flex-wrap:nowrap; align-items:center; flex:1 1 auto; min-width:0; overflow:hidden; }
+  .chip.note { background:transparent; border-color:var(--line); color:var(--muted); cursor:help; }
+  .chip { font-size:11px; padding:2px 8px; border-radius:999px; background:var(--chip); color:var(--chip-ink); border:1px solid transparent; white-space:nowrap; }
+  /* priority — colour-tinted by level with a leading dot (matches the left border) */
+  .chip.prio { display:inline-flex; align-items:center; gap:5px; font-weight:600; border-radius:6px; }
+  .chip.prio::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; flex:0 0 auto; }
+  .p-High   .chip.prio { background:color-mix(in srgb, var(--p-high) 15%, transparent); color:var(--p-high); border-color:color-mix(in srgb, var(--p-high) 34%, transparent); }
+  .p-Medium .chip.prio { background:color-mix(in srgb, var(--p-med) 16%, transparent); color:var(--p-med); border-color:color-mix(in srgb, var(--p-med) 34%, transparent); }
+  .p-Low    .chip.prio { background:color-mix(in srgb, var(--p-low) 16%, transparent); color:var(--p-low); border-color:color-mix(in srgb, var(--p-low) 34%, transparent); }
+  /* category — the solid indigo "identity" pill (default .chip look), capitalised */
+  .chip.cat { text-transform:capitalize; }
+  /* size — compact neutral-grey solid badge, uppercase */
+  .chip.size { background:color-mix(in srgb, var(--muted) 15%, transparent); border-color:transparent; color:var(--muted); text-transform:uppercase; letter-spacing:.6px; font-weight:700; font-size:10px; border-radius:5px; }
+  /* due — outlined, turns amber/red as it approaches */
+  .chip.due { background:transparent; border-color:var(--line); color:var(--muted); }
+  .chip.due.overdue { color:var(--p-high); border-color:var(--p-high); }
+  .chip.due.soon { color:var(--p-med); border-color:var(--p-med); }
+  .row-actions { display:flex; gap:6px; flex:0 0 auto; }
+  .row-actions button { padding:4px 8px; font-size:12px; }
+  /* per-row duplicate button — hidden until row hover / keyboard focus */
+  .row-dup {
+    flex:0 0 auto; padding:4px 8px; font-size:15px; line-height:1;
+    background:transparent; border:1px solid transparent; border-radius:8px;
+    color:var(--muted); opacity:0; transition:opacity .12s ease, border-color .12s ease, color .12s ease;
+  }
+  li.todo:hover .row-dup, .row-dup:focus-visible { opacity:1; }
+  .row-dup:hover { border-color:var(--line); color:var(--ink); }
+  @media (hover:none){ .row-dup { opacity:1; } }   /* touch devices: always show */
+  .empty { text-align:center; color:var(--muted); padding:40px; }
+
+  /* category manager */
+  .cat-add { display:flex; flex-direction:column; gap:6px; margin-bottom:4px; }
+  .cat-add .cat-add-row { display:flex; gap:8px; }
+  .cat-add .cat-add-row input { flex:1 1 auto; }
+  .cat-add .cat-add-row button { flex:0 0 auto; }
+  ul.cat-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
+  li.cat-row {
+    display:flex; align-items:center; gap:10px; padding:8px 10px;
+    border:1px solid var(--line); border-radius:var(--radius); background:var(--panel);
+  }
+  li.cat-row .cat-name { flex:1 1 auto; font-weight:600; text-transform:capitalize; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  li.cat-row .cat-count { flex:0 0 auto; }
+  li.cat-row .cat-acts { display:flex; gap:6px; flex:0 0 auto; }
+  li.cat-row .cat-acts button { padding:4px 8px; font-size:13px; line-height:1; }
+
+  /* data dropdown menu (top-right) */
+  .menu-wrap { position:relative; }
+  .menu {
+    position:absolute; right:0; top:calc(100% + 6px); min-width:250px;
+    max-height:calc(100vh - 80px); overflow-y:auto;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    box-shadow:var(--shadow); padding:6px; z-index:30; display:none; flex-direction:column; gap:2px;
+  }
+  .menu.open { display:flex; }
+  .menu-status { padding:8px 10px; font-size:12px; color:var(--muted); border-radius:8px; background:var(--chip); }
+  .menu-status b { color:var(--ink); }
+  .menu-sep { height:1px; background:var(--line); margin:4px 2px; }
+  .menu-item { text-align:left; background:transparent; border:1px solid transparent; padding:8px 10px; border-radius:8px; font-size:13px; width:100%; }
+  .menu-item:hover { background:var(--bg); border-color:var(--line); }
+  .menu-item.reconnect { color:var(--p-med); font-weight:600; }
+
+  /* startup gate — blocks the app until a data file is selected/created */
+  .gate {
+    position:fixed; inset:0; z-index:40; display:none;
+    align-items:center; justify-content:center; padding:20px;
+    background:rgba(10,12,16,.55); backdrop-filter:blur(3px);
+  }
+  .gate.open { display:flex; }
+  .gate-card {
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    box-shadow:var(--shadow); max-width:460px; width:100%; padding:30px 28px; text-align:center;
+  }
+  .gate-card .gate-logo { font-size:40px; line-height:1; margin-bottom:8px; }
+  .gate-card h2 { margin:.15em 0 .45em; font-size:20px; }
+  .gate-card p { color:var(--muted); margin:.4em 0 1.1em; line-height:1.55; }
+  .gate-card p.gate-note { font-size:12px; margin-top:14px; margin-bottom:0; }
+  .gate-actions { display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+  .gate-actions button { padding:11px 18px; font-size:14px; }
+  .gate-file { font-weight:600; color:var(--ink); }
+
+  /* awaiting — row action, chip, section & modal */
+  .row-wait, .row-pull {
+    flex:0 0 auto; padding:4px 8px; font-size:15px; line-height:1;
+    background:transparent; border:1px solid transparent; border-radius:8px;
+    color:var(--muted); transition:opacity .12s ease, border-color .12s ease, color .12s ease;
+  }
+  .row-wait { opacity:0; }                            /* like duplicate: reveal on hover/focus */
+  li.todo:hover .row-wait, .row-wait:focus-visible { opacity:1; }
+  .row-wait:hover, .row-pull:hover { border-color:var(--line); color:var(--ink); }
+  @media (hover:none){ .row-wait { opacity:1; } }     /* touch devices: always show */
+  .chip.await { background:color-mix(in srgb, #8b5cf6 16%, transparent); color:#8b5cf6; border-color:color-mix(in srgb, #8b5cf6 34%, transparent); font-weight:600; }
+  @media (prefers-color-scheme: dark){ .chip.await { color:#b79dff; } }
+  li.todo.awaiting { background:color-mix(in srgb, #8b5cf6 5%, var(--panel)); }
+  li.todo.awaiting.done { background: var(--done-bg); }
+
+  .await-section { margin-top:24px; }
+  .await-head {
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:14px;
+    margin:0 0 12px; padding-top:16px; border-top:1px dashed var(--line);
+    color:var(--muted); font-weight:600;
+  }
+  .await-head .await-count {
+    font-weight:700; color:#8b5cf6; background:color-mix(in srgb, #8b5cf6 14%, transparent);
+    border-radius:999px; padding:1px 9px; font-size:12px;
+  }
+  .await-head .await-hint { font-weight:400; font-size:12px; color:var(--muted); }
+
+  .await-modal { position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(10,12,16,.55); backdrop-filter:blur(3px); }
+  .await-modal.open { display:flex; }
+  .await-card { background:var(--panel); border:1px solid var(--line); border-radius:16px; box-shadow:var(--shadow); max-width:440px; width:100%; padding:24px 24px 20px; }
+  .await-card h2 { margin:0 0 4px; font-size:18px; }
+  .await-card .await-for { color:var(--muted); font-size:13px; margin:0 0 16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .await-card label { margin-top:14px; }
+  .await-card label:first-of-type { margin-top:0; }
+  .await-actions { display:flex; gap:8px; justify-content:flex-end; margin-top:20px; }
+
+  /* about pane */
+  .about h3 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--muted); }
+  .about h4 { margin:12px 0 5px; font-size:12px; color:var(--ink); }
+  .about p { margin:0 0 9px; }
+  .about ul { margin:0; padding-left:18px; display:flex; flex-direction:column; gap:7px; }
+  .about li { line-height:1.45; }
+  .about .term { font-weight:600; color:var(--ink); }
+  .about .muted { color:var(--muted); }
+  .about code { background:var(--chip); color:var(--chip-ink); border-radius:5px; padding:1px 6px; font-size:12px; }
+  .about .score-eq { text-align:center; font-weight:600; background:var(--chip); color:var(--chip-ink); border-radius:8px; padding:9px; margin:2px 0 10px; }
+  .about .score-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+  .about .score-tbl td { padding:4px 0; border-bottom:1px solid var(--line); }
+  .about .score-tbl tr:last-child td { border-bottom:none; }
+  .about .score-tbl td:last-child { text-align:right; color:var(--muted); white-space:nowrap; padding-left:12px; font-variant-numeric:tabular-nums; }
+  .sr { position:absolute; width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0); }
+  @media (max-width:480px){ .pane-body .grid2{grid-template-columns:1fr;} }
+</style>
+</head>
+<body>
+<header>
+  <a class="brand" href="#" onclick="return false" aria-label="VM GSD — Getting Stuff Done">
+    <span class="logo" aria-hidden="true">
+      <svg viewBox="0 0 44 44" width="34" height="34" role="img">
+        <defs>
+          <linearGradient id="vmg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#5b8dff"/>
+            <stop offset="0.55" stop-color="#2f6feb"/>
+            <stop offset="1" stop-color="#8b5cf6"/>
+          </linearGradient>
+        </defs>
+        <rect x="1.5" y="1.5" width="41" height="41" rx="12" fill="url(#vmg)"/>
+        <rect x="1.5" y="1.5" width="41" height="41" rx="12" fill="none" stroke="#ffffff" stroke-opacity="0.18"/>
+        <!-- task list lines -->
+        <path d="M22 15 H33" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-opacity="0.95"/>
+        <path d="M22 22 H33" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-opacity="0.7"/>
+        <path d="M22 29 H30" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-opacity="0.5"/>
+        <!-- big check -->
+        <path d="M10 22.5 L14.5 27 L23 15.5" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </span>
+    <span class="brand-text">
+      <span class="brand-title"><b>VM</b> GSD</span>
+      <small class="brand-sub" title="…or Sh!t. We don't judge. 😏">Getting Stuff Done</small>
+    </span>
+  </a>
+  <div class="spacer"></div>
+  <div class="status" id="status">Loading…</div>
+  <div class="menu-wrap">
+    <button id="menuBtn" class="ghost hamburger" aria-haspopup="true" aria-expanded="false" aria-label="Menu" title="Menu">☰</button>
+    <div class="menu" id="mainMenu" role="menu"></div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="toolbar">
+    <input class="search" id="search" placeholder="🔎 Search title / description…" />
+    <div class="field"><label for="filterStatus">Status</label>
+      <select id="filterStatus"><option value="active">Active</option><option value="all">All</option><option value="done">Done</option></select></div>
+    <div class="field"><label for="filterCat">Category</label>
+      <select id="filterCat"><option value="">All</option></select></div>
+    <div class="field"><label for="filterPrio">Priority</label>
+      <select id="filterPrio"><option value="">All</option><option>High</option><option>Medium</option><option>Low</option></select></div>
+    <div class="field"><label for="sortBy">Sort</label>
+      <select id="sortBy">
+        <option value="smart">✨ Smart (auto)</option>
+        <option value="due">Due date</option>
+        <option value="priority">Priority</option>
+        <option value="size">Size</option>
+        <option value="category">Category</option>
+        <option value="created">Created</option>
+      </select></div>
+  </div>
+
+  <ul class="todos" id="list"></ul>
+  <div class="empty" id="empty" style="display:none">Nothing here. Tap the ➕ button to add a task.</div>
+
+  <section class="await-section" id="awaitSection" style="display:none">
+    <h2 class="await-head">⏳ Awaiting <span class="await-count" id="awaitCount">0</span>
+      <span class="await-hint">— returns to the to-do list automatically on its bring-back date</span></h2>
+    <ul class="todos awaiting" id="awaitList"></ul>
+  </section>
+</div>
+
+<button class="fab" id="fab" aria-label="Add task" title="Add task">+</button>
+
+<div class="pane-backdrop" id="paneBackdrop"></div>
+<aside class="pane" id="detailPane" aria-hidden="true" aria-label="Task details">
+  <div class="pane-head">
+    <h2 id="paneTitle">Task details</h2>
+    <button type="button" class="ghost modal-x" id="paneClose" aria-label="Close">✕</button>
+  </div>
+  <div class="pane-body">
+    <div>
+      <label for="d-title">Title</label>
+      <input id="d-title" />
+    </div>
+    <div>
+      <label for="d-desc">Description</label>
+      <textarea id="d-desc" rows="4"></textarea>
+    </div>
+    <div class="grid2">
+      <div>
+        <label for="d-priority">Priority</label>
+        <select id="d-priority"><option>High</option><option>Medium</option><option>Low</option></select>
+      </div>
+      <div>
+        <label for="d-due">Due date</label>
+        <input id="d-due" type="date" />
+      </div>
+      <div>
+        <label for="d-category">Category</label>
+        <select id="d-category">
+          <option value="">— none —</option>
+          <option value="__custom">+ custom…</option>
+        </select>
+      </div>
+      <div>
+        <label for="d-size">Size</label>
+        <select id="d-size"><option>xs</option><option>s</option><option>m</option><option>l</option><option>xl</option></select>
+      </div>
+      <div id="d-customWrap" style="display:none">
+        <label for="d-category-custom">Custom category</label>
+        <input id="d-category-custom" />
+      </div>
+      <div id="d-statusWrap">
+        <label for="d-toggle">Status</label>
+        <button type="button" class="ghost" id="d-toggle" style="width:100%">Mark done</button>
+      </div>
+    </div>
+    <div class="pane-meta" id="d-created"></div>
+  </div>
+  <div class="pane-foot">
+    <button type="button" class="danger ghost" id="d-delete">🗑 Delete</button>
+    <button type="button" class="primary" id="d-save">Save</button>
+  </div>
+</aside>
+
+<div class="pane-backdrop" id="catBackdrop"></div>
+<aside class="pane" id="catPane" aria-hidden="true" aria-label="Manage categories">
+  <div class="pane-head">
+    <h2>Manage categories</h2>
+    <button type="button" class="ghost modal-x" id="catClose" aria-label="Close">✕</button>
+  </div>
+  <div class="pane-body">
+    <div class="cat-add">
+      <label for="catNew">Add a category</label>
+      <div class="cat-add-row">
+        <input id="catNew" placeholder="new category name" maxlength="40" />
+        <button type="button" class="primary" id="catAddBtn">Add</button>
+      </div>
+    </div>
+    <ul class="cat-list" id="catList"></ul>
+    <div class="empty" id="catEmpty" style="display:none">No categories yet — add one above.</div>
+  </div>
+</aside>
+
+<div class="pane-backdrop" id="aboutBackdrop"></div>
+<aside class="pane" id="aboutPane" aria-hidden="true" aria-label="About GSD">
+  <div class="pane-head">
+    <h2>ℹ️ About GSD</h2>
+    <button type="button" class="ghost modal-x" id="aboutClose" aria-label="Close">✕</button>
+  </div>
+  <div class="pane-body about">
+    <section>
+      <h3>What “GSD” means</h3>
+      <p><b>GSD = Getting Stuff Done.</b> A single, offline, self-contained to-do app built around the
+      <b>Getting Things Done (GTD)</b> productivity framework. Instead of a flat list, it lets you work
+      tasks by their attributes — priority, due date, size and category — so the right thing rises to the top.</p>
+      <p class="muted" style="font-size:12px">(Read the “S” however colourfully you like — that’s on you. 😏)</p>
+    </section>
+
+    <section>
+      <h3>Terms used in the app</h3>
+      <ul>
+        <li><span class="term">Priority</span> — High · Medium · Low. Sets the coloured left border and the tinted •dot chip.</li>
+        <li><span class="term">Category</span> — an identity pill: a managed category, a custom value, or none.</li>
+        <li><span class="term">Size</span> — effort estimate <code>xs</code>–<code>xl</code>, shown as a grey badge. Smaller = a quick-win nudge in Smart sort.</li>
+        <li><span class="term">Due date</span> — optional. The 📅 chip turns <span style="color:var(--p-med)">amber</span> within 2 days and <span style="color:var(--p-high)">red</span> once overdue.</li>
+        <li><span class="term">Awaiting</span> — a deferred / waiting-on state with a note and a bring-back date; the task auto-returns to the list on that date (⏳ to defer, ↩ to pull back now).</li>
+        <li><span class="term">Done</span> — completed; shown dimmed with a strikethrough and sunk to the bottom.</li>
+        <li><span class="term">Smart score</span> — the number behind ✨ Smart sort (see below).</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>Features</h3>
+      <ul>
+        <li><b>Add</b> — the floating <b>+</b> button opens a right-side pane with the task fields.</li>
+        <li><b>Edit / delete</b> — click any row to reopen that pane pre-filled; edit, toggle done, or delete.</li>
+        <li><b>Duplicate</b> — hover a row and click <b>⧉</b> to clone it as “copy of - …”.</li>
+        <li><b>Awaiting</b> — hover a row and click <b>⏳</b> to defer with a note + bring-back date; it returns automatically.</li>
+        <li><b>Categories</b> — the hamburger → <b>🗂 Categories</b> pane adds / renames / deletes categories (CRUD).</li>
+        <li><b>Search · filter · sort</b> — search text; filter by status / category / priority; sort by Smart, Due, Priority, Size, Category or Created.</li>
+        <li><b>Auto-save</b> — every change writes straight to your <code>data-gsd/</code> folder (to-do / done / categories JSON files), with a localStorage backup.</li>
+        <li><b>Unsaved-changes guard</b> — closing the editor with pending edits prompts before discarding.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h3>The GTD-style Smart score</h3>
+      <p>✨ <b>Smart (auto)</b> ranks tasks by a computed score — higher sorts first. It blends three things
+      and never changes your manual priority. Done tasks always sink; ties break by the earliest due date.</p>
+      <div class="score-eq">score = priority + size (quick-win) + urgency</div>
+
+      <h4>Priority points</h4>
+      <table class="score-tbl">
+        <tr><td>High</td><td>+40</td></tr>
+        <tr><td>Medium</td><td>+20</td></tr>
+        <tr><td>Low</td><td>+5</td></tr>
+      </table>
+
+      <h4>Size points <span class="muted">(smaller = quick-win boost)</span></h4>
+      <table class="score-tbl">
+        <tr><td>xs</td><td>+12</td></tr>
+        <tr><td>s</td><td>+9</td></tr>
+        <tr><td>m</td><td>+6</td></tr>
+        <tr><td>l</td><td>+4</td></tr>
+        <tr><td>xl</td><td>+2</td></tr>
+      </table>
+
+      <h4>Urgency points <span class="muted">(from the due date)</span></h4>
+      <table class="score-tbl">
+        <tr><td>Overdue</td><td>+60, +1 / extra day (max +100)</td></tr>
+        <tr><td>Due today</td><td>+55</td></tr>
+        <tr><td>Within 2 days</td><td>+45</td></tr>
+        <tr><td>Within a week</td><td>+30</td></tr>
+        <tr><td>Within 2 weeks</td><td>+20</td></tr>
+        <tr><td>Later</td><td>+10</td></tr>
+        <tr><td>No due date</td><td>+10</td></tr>
+      </table>
+    </section>
+
+    <section>
+      <h3>Data &amp; privacy</h3>
+      <p>Everything lives locally — in a <code>data-gsd/</code> folder you choose on first launch and in your
+      browser. Nothing is sent anywhere. Live folder auto-save needs Chrome or Edge; Safari / Firefox fall
+      back to in-browser storage with manual export.</p>
+      <p>The folder is <b>schema-versioned</b> (<code>meta.json</code>): point the app at an older data
+      folder and it auto-upgrades it to the latest format on load — snapshotting a backup zip into
+      <code>data-gsd/backups/</code> first, so nothing is lost.</p>
+    </section>
+  </div>
+</aside>
+
+<div class="gate" id="startupGate" role="dialog" aria-modal="true" aria-label="Choose data folder"></div>
+
+<div class="await-modal" id="awaitModal" role="dialog" aria-modal="true" aria-label="Move to awaiting">
+  <div class="await-card">
+    <h2>⏳ Move to Awaiting</h2>
+    <p class="await-for" id="awaitFor"></p>
+    <label for="awaitNoteInput">Notes — what are you waiting on?</label>
+    <textarea id="awaitNoteInput" rows="3" placeholder="e.g. waiting on review from Alex; blocked by vendor…"></textarea>
+    <label for="awaitUntilInput">Bring back on</label>
+    <input id="awaitUntilInput" type="date" />
+    <div class="await-actions">
+      <button type="button" class="ghost" id="awaitCancel">Cancel</button>
+      <button type="button" class="primary" id="awaitConfirm">⏳ Move to Awaiting</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const LS_KEY = "gsd-todos-v1";
+  const CAT_LS_KEY = "gsd-cats-v1";
+  const DATA_FILES = { active:"to-do-tasks.json", done:"done-tasks.json", cats:"categories.json" };
+  const META_FILE = "meta.json";                // records the folder's data schema version
+  const SCHEMA_VERSION = 2;                      // bump when the data shape changes, and add a MIGRATIONS[n] step
+  const PRIO_ORDER = { High:0, Medium:1, Low:2 };
+  const SIZE_ORDER = { xs:0, s:1, m:2, l:3, xl:4 };
+  const DEFAULT_CATS = ["work","career","family","hobbies","essentials","investments","savings"];
+
+  let todos = [];
+  let categories = [];             // managed category list (lowercase, unique, ordered)
+  let dirHandle = null;            // File System Access API directory handle — the data-gsd/ folder is the DB
+  let pendingHandle = null;        // remembered handle awaiting a one-click permission re-grant
+  const hasFSA = "showDirectoryPicker" in window;
+  const IDB_NAME = "gsd-fs", IDB_STORE = "kv", IDB_HANDLE_KEY = "data-dir-handle";
+
+  const $ = s => document.querySelector(s);
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+  const esc = s => (s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+  /* ---------- persistence ---------- */
+  function reconcileCategories(){          // make sure every category used by a task exists in the list
+    const set = new Set(categories);
+    todos.forEach(t => { if (t.category && !set.has(t.category)) { set.add(t.category); categories.push(t.category); } });
+  }
+  function persist() {                       // write-through (localStorage + linked folder), no re-render
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(todos));
+      localStorage.setItem(CAT_LS_KEY, JSON.stringify(categories));
+    } catch(e){}
+    if (dirHandle) writeToDir().catch(()=>{});
+  }
+  function saveLocal() { persist(); render(); }
+
+  /* ---------- awaiting (defer / waiting-on) ---------- */
+  const isAwaiting = t => !!t.awaiting && !t.done;
+  function ymd(d){ const z=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; }
+  function plusDaysStr(n){ const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+n); return ymd(d); }
+  const todayStr = () => plusDaysStr(0);
+  const tomorrowStr = () => plusDaysStr(1);
+  /* On (or after) its bring-back date an awaiting task returns to the main list automatically. */
+  function reactivateDue(){
+    const today = todayStr(); let changed = false;
+    todos.forEach(t=>{
+      if (t.awaiting && !t.done && t.awaitUntil && t.awaitUntil <= today){
+        t.awaiting = false; delete t.awaitNote; delete t.awaitUntil; changed = true;
+      }
+    });
+    return changed;
+  }
+  function pullBack(id){                      // manual "bring it back now" from the awaiting section
+    const t = todos.find(x=>x.id===id); if(!t) return;
+    t.awaiting = false; delete t.awaitNote; delete t.awaitUntil;
+    saveLocal(); flash("Pulled back to to-do");
+  }
+  function loadLocal() {
+    try { const raw = localStorage.getItem(LS_KEY); if (raw) todos = JSON.parse(raw) || []; } catch(e){ todos = []; }
+    try { const rawC = localStorage.getItem(CAT_LS_KEY); if (rawC) categories = JSON.parse(rawC) || []; } catch(e){ categories = []; }
+    if (!categories.length) categories = [...DEFAULT_CATS];
+    reconcileCategories();
+  }
+  async function writeFileInDir(name, text){
+    const fh = await dirHandle.getFileHandle(name, { create:true });
+    const w = await fh.createWritable();
+    await w.write(text);
+    await w.close();
+  }
+  /* Split the single in-memory list back into the folder's three files. Not atomic across files —
+     an acceptable tradeoff for a personal single-user app. */
+  async function writeToDir() {
+    if (!dirHandle) return;
+    const active = todos.filter(t=>!t.done);
+    const done   = todos.filter(t=> t.done);
+    await writeFileInDir(DATA_FILES.active, JSON.stringify(active, null, 2) + "\n");
+    await writeFileInDir(DATA_FILES.done,   JSON.stringify(done,   null, 2) + "\n");
+    await writeFileInDir(DATA_FILES.cats,   JSON.stringify(categories, null, 2) + "\n");
+    flash("Saved ✓");
+  }
+  async function readFileInDir(name){
+    try {
+      const fh = await dirHandle.getFileHandle(name);
+      const text = await (await fh.getFile()).text();
+      return text.trim() ? JSON.parse(text) : null;
+    } catch(e){ return null; }               // missing or unparseable → treated as empty
+  }
+  /* Merge the folder's task files into the single in-memory list; the source file sets `done`. */
+  function ingestDir(active, done, cats){
+    const A = Array.isArray(active) ? active : [];
+    const D = Array.isArray(done)   ? done   : [];
+    todos = A.map(t=>({ ...t, done:false })).concat(D.map(t=>({ ...t, done:true })));
+    categories = (Array.isArray(cats) && cats.length) ? cats.slice() : (categories.length ? categories : [...DEFAULT_CATS]);
+    reconcileCategories();
+  }
+
+  /* ---------- data schema versioning ----------
+     Each MIGRATIONS[n] upgrades the combined { todos, categories } model from version (n-1) → n; they
+     run in order so an old folder is brought all the way up to SCHEMA_VERSION. A folder with no
+     meta.json is treated as version 1 (the original flat-file shape). Migrations preserve unknown
+     fields (spread-then-coerce), and the pre-upgrade files are snapshotted to data-gsd/backups/ first,
+     so data is never lost. To evolve the schema: bump SCHEMA_VERSION and add the matching step here. */
+  const MIGRATIONS = {
+    // 1 → 2: guarantee every task has the full, well-typed field set (self-heals old / hand-edited
+    //        data) and drop stale awaiting bookkeeping from non-awaiting tasks.
+    2: (data) => {
+      const PRI = ["High","Medium","Low"], SZ = ["xs","s","m","l","xl"];
+      data.todos = (Array.isArray(data.todos) ? data.todos : []).map(t => {
+        const n = { ...t };                          // keep any unknown/custom fields
+        n.id          = t.id || uid();
+        n.created     = t.created || Date.now();
+        n.done        = !!t.done;
+        n.title       = (t.title ?? "").toString();
+        n.description = (t.description ?? "").toString();
+        n.priority    = PRI.includes(t.priority) ? t.priority : "Medium";
+        n.due         = t.due || "";
+        n.category    = t.category || "";
+        n.size        = SZ.includes(t.size) ? t.size : "m";
+        if (n.awaiting) { n.awaiting = true; n.awaitNote = t.awaitNote || ""; n.awaitUntil = t.awaitUntil || ""; }
+        else { delete n.awaiting; delete n.awaitNote; delete n.awaitUntil; }
+        return n;
+      });
+      if (!Array.isArray(data.categories)) data.categories = [];
+      return data;
+    },
+  };
+  function migrate(data, fromVersion){       // apply every step from fromVersion up to SCHEMA_VERSION
+    for (let v = fromVersion; v < SCHEMA_VERSION; v++){
+      const step = MIGRATIONS[v + 1];
+      if (step) data = step(data) || data;
+    }
+    return data;
+  }
+  function metaJson(){ return JSON.stringify({ app:"gsd", schemaVersion:SCHEMA_VERSION, updatedAt:new Date().toISOString() }, null, 2) + "\n"; }
+  async function writeMeta(){ if (dirHandle) await writeFileInDir(META_FILE, metaJson()); }
+  async function readVersion(){
+    const meta = await readFileInDir(META_FILE);
+    const v = meta && Number(meta.schemaVersion);
+    return (Number.isInteger(v) && v > 0) ? v : 1;   // no / invalid meta → the original v1 shape
+  }
+  /* Snapshot the folder's current files into data-gsd/backups/ before an upgrade overwrites them. */
+  async function backupBeforeMigrate(fromVersion){
+    try {
+      const entries = [];
+      for (const nm of [DATA_FILES.active, DATA_FILES.done, DATA_FILES.cats, META_FILE]){
+        try { const fh = await dirHandle.getFileHandle(nm); entries.push({ name:nm, text: await (await fh.getFile()).text() }); }
+        catch(e){ /* file absent — skip */ }
+      }
+      if (!entries.length) return null;
+      const backups = await dirHandle.getDirectoryHandle("backups", { create:true });
+      const fname = `pre-migration-v${fromVersion}-${tsStamp()}.zip`;
+      const fh = await backups.getFileHandle(fname, { create:true });
+      const w = await fh.createWritable(); await w.write(makeZip(entries)); await w.close();
+      return "backups/" + fname;
+    } catch(e){ return null; }
+  }
+  /* Ingest folder data, then upgrade it to the latest schema (backing up first) if it's older. */
+  async function ingestAndMigrate(active, done, cats, version){
+    ingestDir(active, done, cats);
+    if (version > SCHEMA_VERSION){ flash(`⚠ Data is v${version}; app understands v${SCHEMA_VERSION} — loaded as-is`); return; }
+    if (version < SCHEMA_VERSION){
+      const backup = await backupBeforeMigrate(version);
+      const model = migrate({ todos, categories }, version);
+      if (Array.isArray(model.todos)) todos = model.todos;
+      if (Array.isArray(model.categories)) categories = model.categories;
+      reconcileCategories();
+      await writeToDir();
+      await writeMeta();
+      flash(`Upgraded data v${version} → v${SCHEMA_VERSION}${backup ? " (backup saved)" : ""}`);
+    }
+  }
+
+  /* ---- tiny IndexedDB kv store: remembers the data-file handle across sessions ---- */
+  function idbReq(mode, fn){
+    return new Promise((resolve, reject)=>{
+      let db;
+      const open = indexedDB.open(IDB_NAME, 1);
+      open.onupgradeneeded = () => open.result.createObjectStore(IDB_STORE);
+      open.onerror = () => reject(open.error);
+      open.onsuccess = () => {
+        db = open.result;
+        const tx = db.transaction(IDB_STORE, mode);
+        const req = fn(tx.objectStore(IDB_STORE));
+        tx.oncomplete = () => { db.close(); resolve(req && req.result); };
+        tx.onerror = () => { db.close(); reject(tx.error); };
+      };
+    });
+  }
+  const idbSet = (k,v) => idbReq("readwrite", st => st.put(v,k));
+  const idbGet = (k)   => idbReq("readonly",  st => st.get(k));
+  const idbDel = (k)   => idbReq("readwrite", st => st.delete(k));
+
+  /* Load the folder into the app. The folder is the source of truth EXCEPT when it has no tasks but
+     the app does — then we never wipe the app's tasks; we keep them and re-seed the folder. */
+  async function pullFromDir(){
+    const version = await readVersion();
+    const active = await readFileInDir(DATA_FILES.active);
+    const done   = await readFileInDir(DATA_FILES.done);
+    const cats   = await readFileInDir(DATA_FILES.cats);
+    const fileCount = (Array.isArray(active)?active.length:0) + (Array.isArray(done)?done.length:0);
+    if (fileCount === 0 && todos.length > 0) {                            // safeguard against the empty-folder wipe
+      if (Array.isArray(cats)) cats.forEach(c => { if (c && !categories.includes(c)) categories.push(c); });
+      await writeToDir(); await writeMeta();
+      return;
+    }
+    await ingestAndMigrate(active, done, cats, version);
+  }
+
+  /* Adopt a freshly-picked directory as the live data folder: read existing data (or seed), then auto-save. */
+  async function adoptDirHandle(dir){
+    if ((await dir.requestPermission({ mode:"readwrite" })) !== "granted") { flash("Write permission denied"); return false; }
+    dirHandle = dir; pendingHandle = null;
+    const version = await readVersion();
+    const active = await readFileInDir(DATA_FILES.active);
+    const done   = await readFileInDir(DATA_FILES.done);
+    const cats   = await readFileInDir(DATA_FILES.cats);
+    const fileCount = (Array.isArray(active)?active.length:0) + (Array.isArray(done)?done.length:0);
+    if (fileCount > 0) {
+      await ingestAndMigrate(active, done, cats, version);   // folder is the source of truth (migrated if older)
+    } else if (Array.isArray(cats)) {
+      cats.forEach(c => { if (c && !categories.includes(c)) categories.push(c); });  // keep app tasks, adopt folder cats
+    }
+    await writeToDir();                        // seed / sync the folder with the resulting data
+    await writeMeta();                         // ensure meta.json is present at the current schema version
+    try { await idbSet(IDB_HANDLE_KEY, dir); } catch(e){}
+    render(); updateStatus(); hideGate();
+    flash("Data folder ready — auto-saving to " + (dir.name || "data") + "/");
+    return true;
+  }
+
+  /* Pick the data folder — one gesture serves both "open existing" and "create new" (empty folder). */
+  async function connectDir() {
+    if (!hasFSA) { fallbackExport(); return; }
+    try {
+      const dir = await window.showDirectoryPicker({ mode:"readwrite" });
+      await adoptDirHandle(dir);
+    } catch(e){ /* user cancelled the picker — the gate stays up */ }
+  }
+
+  /* Later sessions: one click re-grants access to the remembered folder, then resume auto-save. */
+  async function reconnect() {
+    if (!pendingHandle) return;
+    try {
+      if ((await pendingHandle.requestPermission({ mode:"readwrite" })) !== "granted") { flash("Permission denied"); return; }
+      dirHandle = pendingHandle; pendingHandle = null;
+      try { await pullFromDir(); } catch(e){}
+      saveLocal(); updateStatus(); hideGate();
+      flash("Reconnected — auto-saving");
+    } catch(e){}
+  }
+
+  /* On boot: reattach the remembered folder. If permission survived, resume silently; otherwise the
+     startup gate forces the user to pick a data folder before the app can be used. */
+  async function initDirHandle() {
+    if (!hasFSA) { showGate("unsupported"); updateStatus(); return; }
+    showGate("loading");
+    let h = null;
+    if ("indexedDB" in window) { try { h = await idbGet(IDB_HANDLE_KEY); } catch(e){} }
+    if (!h) { showGate("select"); updateStatus(); return; }         // no remembered folder → must choose one
+    let perm = "prompt"; try { perm = await h.queryPermission({ mode:"readwrite" }); } catch(e){}
+    if (perm === "granted") {
+      dirHandle = h;
+      try { await pullFromDir(); } catch(e){}
+      render(); updateStatus(); hideGate();
+    } else {
+      pendingHandle = h;                     // remembered, but needs one click to re-grant access
+      showGate("reconnect"); updateStatus();
+    }
+  }
+
+  /* ---------- startup gate ---------- */
+  function showGate(mode){
+    const g = $("#startupGate"); if(!g) return;
+    let html;
+    if(mode === "loading"){
+      html = `<div class="gate-card"><div class="gate-logo">⏳</div><h2>Loading…</h2>
+        <p>Opening your data folder.</p></div>`;
+    } else if(mode === "reconnect"){
+      const nm = esc((pendingHandle && pendingHandle.name) || "data");
+      html = `<div class="gate-card"><div class="gate-logo">🔗</div>
+        <h2>Reconnect your data folder</h2>
+        <p>For security your browser needs one click to re-open the <span class="gate-file">${nm}/</span> folder before your tasks load.</p>
+        <div class="gate-actions"><button class="primary" data-gate="reconnect">🔗 Reconnect ${nm}/</button></div>
+        <p class="gate-note"><a href="#" data-gate="select">Use a different folder…</a></p></div>`;
+    } else if(mode === "unsupported"){
+      html = `<div class="gate-card"><div class="gate-logo">🗂</div>
+        <h2>Live data folder needs Chrome or Edge</h2>
+        <p>This browser can't auto-save to local files. You can still use the app with in-browser storage and export a backup manually.</p>
+        <div class="gate-actions">
+          <button class="primary" data-gate="continue-local">Continue in-browser</button>
+          <button data-gate="export">⬇ Export backup</button>
+        </div></div>`;
+    } else { // "select"
+      html = `<div class="gate-card"><div class="gate-logo">🗂</div>
+        <h2>Choose your data folder</h2>
+        <p>Your tasks live in a <span class="gate-file">data-gsd/</span> folder on your computer — a JSON file each for to-do, done and categories — saved automatically on every change. Pick that folder to begin; an empty folder will be set up for you.</p>
+        <div class="gate-actions">
+          <button class="primary" data-gate="choose">📂 Choose data folder</button>
+        </div></div>`;
+    }
+    g.innerHTML = html;
+    g.classList.add("open");
+  }
+  function hideGate(){ const g = $("#startupGate"); if(g){ g.classList.remove("open"); g.innerHTML = ""; } }
+
+  /* ---------- backup export (.zip) ---------- */
+  /* Minimal, dependency-free ZIP writer (STORE / no compression) so the app stays a single offline
+     file — no library, no CDN. Good enough for a handful of small JSON files. */
+  function crc32(bytes){
+    if(!crc32.table){
+      const t = crc32.table = new Uint32Array(256);
+      for(let n=0;n<256;n++){ let c=n; for(let k=0;k<8;k++){ c = (c & 1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1); } t[n]=c>>>0; }
+    }
+    const t = crc32.table; let crc = 0xFFFFFFFF;
+    for(let i=0;i<bytes.length;i++){ crc = t[(crc ^ bytes[i]) & 0xFF] ^ (crc>>>8); }
+    return (crc ^ 0xFFFFFFFF) >>> 0;
+  }
+  function makeZip(files){
+    const enc = new TextEncoder();
+    const u16 = n => [n & 0xFF, (n>>>8)&0xFF];
+    const u32 = n => [n & 0xFF, (n>>>8)&0xFF, (n>>>16)&0xFF, (n>>>24)&0xFF];
+    const d = new Date();
+    const dosTime = ((d.getHours()&31)<<11) | ((d.getMinutes()&63)<<5) | ((d.getSeconds()>>1)&31);
+    const dosDate = (((d.getFullYear()-1980)&127)<<9) | (((d.getMonth()+1)&15)<<5) | (d.getDate()&31);
+    const parts = [], central = []; let offset = 0;
+    for(const f of files){
+      const name = enc.encode(f.name), data = enc.encode(f.text), crc = crc32(data);
+      const local = Uint8Array.from([].concat(
+        u32(0x04034b50), u16(20), u16(0), u16(0), u16(dosTime), u16(dosDate),
+        u32(crc), u32(data.length), u32(data.length), u16(name.length), u16(0)));
+      parts.push(local, name, data);
+      central.push(Uint8Array.from([].concat(
+        u32(0x02014b50), u16(20), u16(20), u16(0), u16(0), u16(dosTime), u16(dosDate),
+        u32(crc), u32(data.length), u32(data.length), u16(name.length),
+        u16(0), u16(0), u16(0), u16(0), u32(0), u32(offset))), name);
+      offset += local.length + name.length + data.length;
+    }
+    const cdSize = central.reduce((s,c)=>s+c.length, 0);
+    const end = Uint8Array.from([].concat(
+      u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length),
+      u32(cdSize), u32(offset), u16(0)));
+    return new Blob([...parts, ...central, end], { type:"application/zip" });
+  }
+  /* The files that go into a backup zip — the live data-gsd/ store, mirrored under a data-gsd/ folder
+     so unzipping restores a ready-to-use folder. */
+  function backupFiles(){
+    const active = todos.filter(t=>!t.done);
+    const done   = todos.filter(t=> t.done);
+    return [
+      { name:"data-gsd/"+DATA_FILES.active, text: JSON.stringify(active, null, 2) + "\n" },
+      { name:"data-gsd/"+DATA_FILES.done,   text: JSON.stringify(done,   null, 2) + "\n" },
+      { name:"data-gsd/"+DATA_FILES.cats,   text: JSON.stringify(categories, null, 2) + "\n" },
+      { name:"data-gsd/"+META_FILE,         text: metaJson() },     // carry the schema version in the backup
+    ];
+  }
+  function tsStamp(){
+    const d = new Date(), z = n => String(n).padStart(2,"0");
+    return `${d.getFullYear()}${z(d.getMonth()+1)}${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}${z(d.getSeconds())}`;
+  }
+  function backupName(){ return `gsd-backup-${tsStamp()}.zip`; }
+  /* Export a standalone .zip backup to a location of the user's choice, WITHOUT changing the live folder. */
+  async function exportCopy() {
+    if (!hasFSA) { fallbackExport(); return; }
+    try {
+      const name = backupName();
+      const h = await window.showSaveFilePicker({ suggestedName: name, types:[{description:"Zip archive",accept:{"application/zip":[".zip"]}}] });
+      const w = await h.createWritable();
+      await w.write(makeZip(backupFiles()));
+      await w.close();
+      flash("Exported backup " + (h.name || name));
+    } catch(e){ /* user cancelled */ }
+  }
+
+  /* ---------- header hamburger menu ---------- */
+  let legendOpen = false;                 // whether the in-menu colour-key section is expanded
+  const LEGEND_HTML = `<ul class="lg-list">
+      <li><span class="lg-sw"><span class="lg-bar" style="background:var(--p-high)"></span></span> <b>High</b> priority — red</li>
+      <li><span class="lg-sw"><span class="lg-bar" style="background:var(--p-med)"></span></span> <b>Medium</b> priority — amber</li>
+      <li><span class="lg-sw"><span class="lg-bar" style="background:var(--p-low)"></span></span> <b>Low</b> priority — green</li>
+      <li><span class="lg-sw"><span class="lg-pill">work</span></span> Solid pill = <b>Category</b></li>
+      <li><span class="lg-sw"><span class="lg-badge">SM</span></span> Grey badge = <b>Size</b> (xs–xl)</li>
+      <li><span class="lg-sw"><span class="lg-chip" style="color:var(--p-high)">📅</span></span> <b>Due</b> — red overdue, amber ≤ 2d</li>
+      <li><span class="lg-sw"><span class="lg-chip" style="color:#8b5cf6">⏳</span></span> <b>Awaiting</b> — auto-returns</li>
+      <li><span class="lg-sw" style="width:16px">✓</span> Strikethrough = <b>done</b></li>
+    </ul>`;
+  function renderMainMenu(){
+    const m = $("#mainMenu"); if(!m) return;
+    let statusRow;
+    if (dirHandle) {
+      statusRow = `<div class="menu-status">🟢 Auto-saving → <b>${esc(dirHandle.name || "data")}/</b> folder</div>`;
+    } else if (pendingHandle) {
+      statusRow = `<button class="menu-item reconnect" data-act="reconnect">🟠 Reconnect ${esc(pendingHandle.name || "data")}/</button>`;
+    } else {
+      statusRow = `<div class="menu-status">⚪ In-browser storage only</div>`;
+    }
+    m.innerHTML = statusRow
+      + `<div class="menu-sep"></div>`
+      + `<button class="menu-item" data-act="categories">🗂 Categories</button>`
+      + `<div class="menu-sep"></div>`
+      + `<button class="menu-item" data-act="export">⬇ Export backup (.zip)…</button>`
+      + `<button class="menu-item" data-act="switch">📂 Switch data folder…</button>`
+      + `<div class="menu-sep"></div>`
+      + `<button class="menu-item legend-toggle" data-act="legend" aria-expanded="${legendOpen}">🎨 Legend <span class="menu-caret">${legendOpen?"▾":"▸"}</span></button>`
+      + (legendOpen ? `<div class="legend-block">${LEGEND_HTML}</div>` : ``)
+      + `<div class="menu-sep"></div>`
+      + `<button class="menu-item" data-act="about">ℹ️ About GSD</button>`;
+  }
+  function openMainMenu(){ renderMainMenu(); $("#mainMenu").classList.add("open"); $("#menuBtn").setAttribute("aria-expanded","true"); }
+  function closeMainMenu(){ const m=$("#mainMenu"); if(m){ m.classList.remove("open"); $("#menuBtn").setAttribute("aria-expanded","false"); } }
+
+  function fallbackExport() {
+    const name = backupName();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(makeZip(backupFiles())); a.download = name; a.click();
+    URL.revokeObjectURL(a.href);
+    flash("Downloaded " + name);
+  }
+  /* try to auto-seed from the sibling data-gsd/ folder on first load (works when served/allowed) */
+  async function trySeedFromSibling() {
+    if (todos.length) return;
+    try {
+      const grab = n => fetch("data-gsd/" + n, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(()=>null);
+      const [active, done, cats, meta] = await Promise.all([grab(DATA_FILES.active), grab(DATA_FILES.done), grab(DATA_FILES.cats), grab(META_FILE)]);
+      const count = (Array.isArray(active)?active.length:0) + (Array.isArray(done)?done.length:0);
+      if (count > 0) {
+        ingestDir(active, done, cats);
+        const mv = meta && Number(meta.schemaVersion);
+        const version = (Number.isInteger(mv) && mv > 0) ? mv : 1;
+        if (version < SCHEMA_VERSION) { const m = migrate({ todos, categories }, version); todos = m.todos; categories = m.categories; reconcileCategories(); }
+        saveLocal();
+      }
+    } catch(e){ /* file:// fetch often blocked — ignore */ }
+  }
+
+  /* ---------- UI helpers ---------- */
+  let flashTimer;
+  function flash(msg){ const s=$("#status"); s.dataset.flash=msg; updateStatus(); clearTimeout(flashTimer); flashTimer=setTimeout(()=>{delete s.dataset.flash; updateStatus();},2500); }
+  function updateStatus(){
+    const s=$("#status");
+    if (s.dataset.flash){ s.innerHTML = esc(s.dataset.flash); return; }
+    const awaiting = todos.filter(isAwaiting).length;
+    const active = todos.filter(t=>!t.done && !isAwaiting(t)).length;
+    s.innerHTML = awaiting
+      ? `<b>${active}</b> active · <b>${awaiting}</b> awaiting · <b>${todos.length}</b> total`
+      : `<b>${active}</b> active · <b>${todos.length}</b> total`;
+  }
+  function allCategories(){ return [...categories]; }
+  function refreshCatFilters(){
+    const sel = $("#filterCat"); const cur = sel.value;
+    sel.innerHTML = '<option value="">All</option>' + categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("");
+    sel.value = (cur === "" || categories.includes(cur)) ? cur : "";
+  }
+  /* Rebuild the task-form category dropdown from the managed list (called when the pane opens). */
+  function refreshFormCat(){
+    const sel = $("#d-category"); const cur = sel.value;
+    sel.innerHTML = '<option value="">— none —</option>'
+      + categories.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join("")
+      + '<option value="__custom">+ custom…</option>';
+    if (cur === "" || cur === "__custom" || categories.includes(cur)) sel.value = cur;
+  }
+
+  function dueMeta(due){
+    if(!due) return null;
+    const today = new Date(); today.setHours(0,0,0,0);
+    const d = new Date(due+"T00:00:00");
+    const diff = Math.round((d - today)/86400000);
+    let cls=""; if(diff<0) cls="overdue"; else if(diff<=2) cls="soon";
+    let label = d.toLocaleDateString(undefined,{month:"short",day:"numeric"});
+    if(diff===0) label="Today"; else if(diff===1) label="Tomorrow"; else if(diff===-1) label="Yesterday"; else if(diff<0) label=`${label} (${-diff}d ago)`;
+    return {cls,label};
+  }
+
+  /* Smart priority score: higher = do sooner. Blends urgency + priority + quick-win size. */
+  function scoreOf(t){
+    const PRI = { High:40, Medium:20, Low:5 };
+    const SZ  = { xs:12, s:9, m:6, l:4, xl:2 };          // smaller = quick-win boost
+    let s = (PRI[t.priority]||0) + (SZ[t.size]||0);
+    if(!t.due){ s += 10; }                                // no due date → mild urgency
+    else {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const d = Math.round((new Date(t.due+"T00:00:00") - today)/86400000);
+      if(d<0)        s += 60 + Math.min(40, -d);          // overdue, more = higher
+      else if(d===0) s += 55;                             // due today
+      else if(d<=2)  s += 45;                             // next couple days
+      else if(d<=7)  s += 30;                             // this week
+      else if(d<=14) s += 20;                             // next week
+      else           s += 10;                             // later
+    }
+    return s;
+  }
+
+  /* ---------- render ---------- */
+  /* One row renderer for both lists. `awaiting` swaps the trailing action (⏳→↩), shows the
+     bring-back chip, and prefers the awaiting note for the hover tooltip / 💬 marker. */
+  function rowHtml(t, awaiting){
+    const dm = dueMeta(t.due);
+    const desc = awaiting ? (t.awaitNote || t.description) : t.description;
+    const back = awaiting ? dueMeta(t.awaitUntil) : null;
+    const tail = awaiting
+      ? `<button class="row-pull" type="button" data-act="pull" title="Pull back to to-do now" aria-label="Pull back to to-do now">↩</button>`
+      : `<button class="row-wait" type="button" data-act="wait" title="Move to awaiting" aria-label="Move to awaiting">⏳</button>
+        <button class="row-dup" type="button" data-act="dup" title="Duplicate task" aria-label="Duplicate task">⧉</button>`;
+    return `<li class="todo ${awaiting?"awaiting ":""}p-${esc(t.priority)} ${t.done?"done":""} ${t.id===currentDetailId?"selected":""}" data-id="${t.id}"${desc?` data-desc="${esc(desc)}"`:""}>
+        <input class="check" type="checkbox" ${t.done?"checked":""} aria-label="Done" data-act="toggle" />
+        <div class="main">
+          <span class="title" title="${esc(t.title)}">${esc(t.title)}</span>
+          <span class="meta">
+            <span class="chip prio">${esc(t.priority)}</span>
+            <span class="chip cat">${esc(t.category||"—")}</span>
+            <span class="chip size">${esc(t.size)}</span>
+            ${dm?`<span class="chip due ${dm.cls}">📅 ${esc(dm.label)}</span>`:""}
+            ${back?`<span class="chip await">⏳ back ${esc(back.label)}</span>`:""}
+            ${awaiting ? (t.awaitNote?`<span class="chip note">💬</span>`:"") : (t.description?`<span class="chip note">📝</span>`:"")}
+          </span>
+        </div>
+        ${tail}
+      </li>`;
+  }
+
+  function render(){
+    if (reactivateDue()) persist();          // surface any awaiting tasks whose date has arrived
+    refreshCatFilters();
+    const q = $("#search").value.trim().toLowerCase();
+    const fStatus = $("#filterStatus").value;
+    const fCat = $("#filterCat").value;
+    const fPrio = $("#filterPrio").value;
+    const sortBy = $("#sortBy").value;
+
+    function cmpDue(a,b){
+      if(!a.due && !b.due) return 0; if(!a.due) return 1; if(!b.due) return -1;
+      return a.due.localeCompare(b.due);
+    }
+    const matchesContent = t => {          // search + category + priority (shared by both lists)
+      if(fCat && t.category!==fCat) return false;
+      if(fPrio && t.priority!==fPrio) return false;
+      if(q && !(`${t.title} ${t.description||""} ${t.awaitNote||""}`.toLowerCase().includes(q))) return false;
+      return true;
+    };
+
+    // ---- main to-do list (awaiting tasks are excluded) ----
+    let items = todos.filter(t=>{
+      if(isAwaiting(t)) return false;
+      if(fStatus==="active" && t.done) return false;
+      if(fStatus==="done" && !t.done) return false;
+      return matchesContent(t);
+    });
+    items.sort((a,b)=>{
+      switch(sortBy){
+        case "smart":
+          if(a.done!==b.done) return a.done?1:-1;        // done tasks sink
+          return (scoreOf(b)-scoreOf(a)) || cmpDue(a,b);
+        case "priority": return (PRIO_ORDER[a.priority]-PRIO_ORDER[b.priority]) || cmpDue(a,b);
+        case "size": return (SIZE_ORDER[a.size]-SIZE_ORDER[b.size]) || cmpDue(a,b);
+        case "category": return (a.category||"").localeCompare(b.category||"") || cmpDue(a,b);
+        case "created": return (b.created||0)-(a.created||0);
+        default: return cmpDue(a,b);
+      }
+    });
+    $("#list").innerHTML = items.map(t=>rowHtml(t,false)).join("");
+    $("#empty").style.display = items.length ? "none" : "block";
+
+    // ---- awaiting section (soonest bring-back date first) ----
+    let awaitingItems = todos.filter(t=> isAwaiting(t) && matchesContent(t));
+    awaitingItems.sort((a,b)=> (a.awaitUntil||"").localeCompare(b.awaitUntil||"") || (a.title||"").localeCompare(b.title||""));
+    $("#awaitList").innerHTML = awaitingItems.map(t=>rowHtml(t,true)).join("");
+    $("#awaitSection").style.display = awaitingItems.length ? "block" : "none";
+    $("#awaitCount").textContent = awaitingItems.length;
+
+    updateStatus();
+  }
+
+  /* ---------- side pane (handles BOTH add + edit) ---------- */
+  let currentDetailId = null;   // null = add mode; an id = edit mode
+  let paneBaseline = "";        // field snapshot at open / last save (for dirty check)
+  function syncToggleBtn(t){ $("#d-toggle").textContent = t.done ? "↩ Mark not done" : "✓ Mark done"; }
+  function snapshot(){ return JSON.stringify(readPane()); }
+  function isDirty(){ return $("#detailPane").classList.contains("open") && snapshot() !== paneBaseline; }
+  function requestClose(){
+    if(isDirty() && !confirm("You have unsaved changes. Discard them?")) return;
+    closePane();
+  }
+
+  function setPaneFields(t){
+    refreshFormCat();
+    $("#d-title").value = t.title || "";
+    $("#d-desc").value = t.description || "";
+    $("#d-priority").value = t.priority || "Medium";
+    $("#d-due").value = t.due || "";
+    const cat = t.category || "";
+    if(cat === "" || categories.includes(cat)){ $("#d-category").value = cat; $("#d-customWrap").style.display="none"; $("#d-category-custom").value=""; }
+    else { $("#d-category").value = "__custom"; $("#d-customWrap").style.display="block"; $("#d-category-custom").value = cat; }
+    $("#d-size").value = t.size || "m";
+  }
+  function showPane(){ closeCatPane(); closeAboutPane(); $("#detailPane").classList.add("open"); $("#detailPane").setAttribute("aria-hidden","false"); $("#paneBackdrop").classList.add("open"); }
+
+  function openPaneAdd(){
+    currentDetailId = null;
+    $("#paneTitle").textContent = "Add task";
+    setPaneFields({});                       // defaults
+    $("#d-statusWrap").style.display = "none";
+    $("#d-created").style.display = "none";
+    $("#d-delete").style.display = "none";
+    $("#d-save").textContent = "Add task";
+    paneBaseline = snapshot();
+    showPane();
+    setTimeout(()=> $("#d-title").focus(), 40);
+    render();
+  }
+  function openPane(id){
+    const t = todos.find(x=>x.id===id); if(!t) return;
+    currentDetailId = id;
+    $("#paneTitle").textContent = "Task details";
+    setPaneFields(t);
+    syncToggleBtn(t);
+    $("#d-statusWrap").style.display = "";
+    $("#d-created").style.display = "";
+    $("#d-created").textContent = "Created " + new Date(t.created || Date.now()).toLocaleString();
+    $("#d-delete").style.display = "";
+    $("#d-save").textContent = "Save";
+    paneBaseline = snapshot();
+    showPane();
+    render(); // reflect .selected highlight
+  }
+  function closePane(){
+    currentDetailId = null;
+    $("#detailPane").classList.remove("open");
+    $("#detailPane").setAttribute("aria-hidden","true");
+    $("#paneBackdrop").classList.remove("open");
+    render();
+  }
+  /* ---------- category manager (CRUD) ---------- */
+  function catCount(name){ return todos.filter(t=>t.category===name).length; }
+  function renderCatList(){
+    const ul = $("#catList");
+    ul.innerHTML = categories.map(c=>{
+      const n = catCount(c);
+      return `<li class="cat-row" data-cat="${esc(c)}">
+        <span class="cat-name" title="${esc(c)}">${esc(c)}</span>
+        <span class="cat-count chip">${n} task${n===1?"":"s"}</span>
+        <span class="cat-acts">
+          <button type="button" data-act="rename" title="Rename category" aria-label="Rename ${esc(c)}">✎</button>
+          <button type="button" class="danger" data-act="del" title="Delete category" aria-label="Delete ${esc(c)}">🗑</button>
+        </span>
+      </li>`;
+    }).join("");
+    $("#catEmpty").style.display = categories.length ? "none" : "block";
+  }
+  function openCatPane(){
+    if($("#detailPane").classList.contains("open")){ requestClose(); if($("#detailPane").classList.contains("open")) return; }
+    closeAboutPane();
+    renderCatList();
+    $("#catNew").value = "";
+    $("#catPane").classList.add("open"); $("#catPane").setAttribute("aria-hidden","false"); $("#catBackdrop").classList.add("open");
+    setTimeout(()=> $("#catNew").focus(), 40);
+  }
+  function closeCatPane(){
+    $("#catPane").classList.remove("open"); $("#catPane").setAttribute("aria-hidden","true"); $("#catBackdrop").classList.remove("open");
+  }
+  /* ---------- about pane (static reference) ---------- */
+  function openAboutPane(){
+    if($("#detailPane").classList.contains("open")){ requestClose(); if($("#detailPane").classList.contains("open")) return; }
+    closeCatPane();
+    $("#aboutPane").classList.add("open"); $("#aboutPane").setAttribute("aria-hidden","false"); $("#aboutBackdrop").classList.add("open");
+    $("#aboutPane .pane-body").scrollTop = 0;
+  }
+  function closeAboutPane(){
+    $("#aboutPane").classList.remove("open"); $("#aboutPane").setAttribute("aria-hidden","true"); $("#aboutBackdrop").classList.remove("open");
+  }
+  function addCategory(){
+    const name = $("#catNew").value.trim().toLowerCase();
+    if(!name) return;
+    if(categories.includes(name)){ alert(`Category “${name}” already exists.`); return; }
+    categories.push(name);
+    $("#catNew").value = "";
+    saveLocal(); renderCatList(); flash("Category added");
+    $("#catNew").focus();
+  }
+  function renameCategory(oldName){
+    let name = prompt(`Rename category “${oldName}” to:`, oldName);
+    if(name === null) return;
+    name = name.trim().toLowerCase();
+    if(!name || name === oldName) return;
+    if(categories.includes(name)){ alert(`A category named “${name}” already exists.`); return; }
+    categories = categories.map(c=> c===oldName ? name : c);
+    todos.forEach(t=>{ if(t.category===oldName) t.category = name; });
+    saveLocal(); renderCatList(); flash("Category renamed");
+  }
+  function deleteCategory(name){
+    const n = catCount(name);
+    if(n > 0 && !confirm(`Delete category “${name}”?\n\n${n} task${n===1?"":"s"} will be left without a category.`)) return;
+    if(n > 0) todos.forEach(t=>{ if(t.category===name) t.category = ""; });
+    categories = categories.filter(c=> c!==name);
+    saveLocal(); renderCatList(); flash("Category deleted");
+  }
+
+  function readPane(){
+    let cat = $("#d-category").value;
+    if(cat==="__custom") cat = ($("#d-category-custom").value.trim() || "custom").toLowerCase();
+    return {
+      title: $("#d-title").value.trim(),
+      description: $("#d-desc").value.trim(),
+      priority: $("#d-priority").value,
+      due: $("#d-due").value || "",
+      category: cat,
+      size: $("#d-size").value,
+    };
+  }
+
+  /* ---------- events ---------- */
+  function onRowClick(e){                          // shared by the main list and the awaiting list
+    const li = e.target.closest("li.todo"); if(!li) return;
+    const id = li.dataset.id;
+    const act = e.target.dataset.act;
+    if(act==="toggle"){                            // checkbox: toggle done, don't open pane
+      const t=todos.find(x=>x.id===id);
+      if(t){ t.done=!t.done; if(currentDetailId===id) syncToggleBtn(t); saveLocal(); }
+      return;
+    }
+    if(act==="dup"){                              // duplicate: clone as a fresh, active (non-awaiting) task
+      const t=todos.find(x=>x.id===id);
+      if(t){
+        const { id:_id, created:_created, done:_done, awaiting:_a, awaitNote:_n, awaitUntil:_u, ...rest } = t;
+        todos.push({ id:uid(), created:Date.now(), done:false, ...rest, title:`copy of - ${rest.title}` });
+        saveLocal(); flash("Task duplicated");
+      }
+      return;
+    }
+    if(act==="wait"){ openAwaitModal(id); return; }  // ⏳ move to awaiting
+    if(act==="pull"){ pullBack(id); return; }        // ↩ bring an awaiting task back now
+    openPane(id);                                  // any other click on the row opens the pane
+  }
+  $("#list").addEventListener("click", onRowClick);
+  $("#awaitList").addEventListener("click", onRowClick);
+
+  // ---- await modal (collects note + bring-back date) ----
+  let awaitTargetId = null;
+  function openAwaitModal(id){
+    const t = todos.find(x=>x.id===id); if(!t) return;
+    awaitTargetId = id;
+    $("#awaitFor").textContent = t.title;
+    $("#awaitNoteInput").value = t.awaitNote || "";
+    $("#awaitUntilInput").min = tomorrowStr();
+    $("#awaitUntilInput").value = t.awaitUntil || plusDaysStr(7);
+    $("#awaitModal").classList.add("open");
+    setTimeout(()=> $("#awaitNoteInput").focus(), 40);
+  }
+  function closeAwaitModal(){ awaitTargetId = null; $("#awaitModal").classList.remove("open"); }
+  function confirmAwait(){
+    const t = todos.find(x=>x.id===awaitTargetId); if(!t){ closeAwaitModal(); return; }
+    const until = $("#awaitUntilInput").value;
+    if(!until){ alert("Pick a date to bring this task back."); return; }
+    if(until <= todayStr()){ alert("The bring-back date must be in the future."); return; }
+    t.awaiting = true;
+    t.awaitNote = $("#awaitNoteInput").value.trim();
+    t.awaitUntil = until;
+    if(currentDetailId===t.id) closePane();
+    closeAwaitModal();
+    saveLocal(); flash("Moved to awaiting");
+  }
+  $("#awaitConfirm").addEventListener("click", confirmAwait);
+  $("#awaitCancel").addEventListener("click", closeAwaitModal);
+  $("#awaitModal").addEventListener("click", e=>{ if(e.target.id==="awaitModal") closeAwaitModal(); });
+  $("#awaitNoteInput").addEventListener("keydown", e=>{ if((e.metaKey||e.ctrlKey) && e.key==="Enter") confirmAwait(); });
+  ["#search","#filterStatus","#filterCat","#filterPrio","#sortBy"].forEach(s=> $(s).addEventListener("input", render));
+  $("#fab").addEventListener("click", openPaneAdd);
+
+  // header hamburger menu
+  $("#menuBtn").addEventListener("click", e=>{
+    e.stopPropagation();
+    $("#mainMenu").classList.contains("open") ? closeMainMenu() : openMainMenu();
+  });
+  $("#mainMenu").addEventListener("click", e=>{
+    const btn = e.target.closest("[data-act]"); if(!btn) return;
+    const act = btn.getAttribute("data-act");
+    if(act==="legend"){ legendOpen = !legendOpen; renderMainMenu(); e.stopPropagation(); return; }  // toggle legend, keep menu open
+    closeMainMenu();
+    if(act==="categories") openCatPane();
+    else if(act==="about") openAboutPane();
+    else if(act==="export") exportCopy();
+    else if(act==="switch") connectDir();
+    else if(act==="reconnect") reconnect();
+  });
+  document.addEventListener("click", e=>{ if(!e.target.closest(".menu-wrap")) closeMainMenu(); });
+
+  // startup gate actions (delegated — content is rebuilt per mode)
+  $("#startupGate").addEventListener("click", e=>{
+    const act = e.target.getAttribute("data-gate"); if(!act) return;
+    e.preventDefault();
+    if(act==="choose") connectDir();
+    else if(act==="reconnect") reconnect();
+    else if(act==="select"){ pendingHandle = null; showGate("select"); }
+    else if(act==="continue-local") hideGate();
+    else if(act==="export") fallbackExport();
+  });
+
+  // about pane controls
+  $("#aboutClose").addEventListener("click", closeAboutPane);
+  $("#aboutBackdrop").addEventListener("click", closeAboutPane);
+
+  // category manager controls
+  $("#catClose").addEventListener("click", closeCatPane);
+  $("#catBackdrop").addEventListener("click", closeCatPane);
+  $("#catAddBtn").addEventListener("click", addCategory);
+  $("#catNew").addEventListener("keydown", e=>{ if(e.key==="Enter"){ e.preventDefault(); addCategory(); } });
+  $("#catList").addEventListener("click", e=>{
+    const row = e.target.closest(".cat-row"); if(!row) return;
+    const cat = row.dataset.cat; const act = e.target.dataset.act;
+    if(act==="rename") renameCategory(cat);
+    else if(act==="del") deleteCategory(cat);
+  });
+
+  // pane controls (add + edit)
+  $("#d-category").addEventListener("change", e=>{ $("#d-customWrap").style.display = e.target.value==="__custom" ? "block":"none"; });
+  $("#paneClose").addEventListener("click", requestClose);
+  $("#paneBackdrop").addEventListener("click", requestClose);
+  $("#d-save").addEventListener("click", ()=>{
+    const data = readPane();
+    if(!data.title){ alert("Title is required"); return; }
+    if(data.category && !categories.includes(data.category)) categories.push(data.category);  // register on-the-fly custom category
+    if(currentDetailId){                                   // edit existing
+      const t = todos.find(x=>x.id===currentDetailId); if(!t) return;
+      Object.assign(t, data); saveLocal(); flash("Task updated");
+    } else {                                               // add new
+      todos.push({ id:uid(), created:Date.now(), done:false, ...data }); saveLocal(); flash("Task added");
+    }
+    closePane();                                           // close on save
+  });
+  $("#d-delete").addEventListener("click", ()=>{
+    if(!currentDetailId) return;
+    if(confirm("Delete this task?")){ todos = todos.filter(x=>x.id!==currentDetailId); closePane(); saveLocal(); }
+  });
+  $("#d-toggle").addEventListener("click", ()=>{
+    if(!currentDetailId) return;
+    const t = todos.find(x=>x.id===currentDetailId); if(!t) return;
+    t.done = !t.done; syncToggleBtn(t); saveLocal();
+  });
+
+  document.addEventListener("keydown", e=>{
+    if(e.key!=="Escape") return;
+    if($("#mainMenu").classList.contains("open")) closeMainMenu();
+    else if($("#awaitModal").classList.contains("open")) closeAwaitModal();
+    else if($("#detailPane").classList.contains("open")) requestClose();
+    else if($("#catPane").classList.contains("open")) closeCatPane();
+    else if($("#aboutPane").classList.contains("open")) closeAboutPane();
+  });
+
+  /* ---------- boot ---------- */
+  loadLocal();
+  render();
+  // startup gate forces choosing a data folder (or resumes a remembered one) before use
+  initDirHandle().finally(()=>{ if(!dirHandle && !pendingHandle) trySeedFromSibling(); });
+})();
+</script>
+</body>
+</html>

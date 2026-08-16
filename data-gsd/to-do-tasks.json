@@ -1,0 +1,173 @@
+[
+  {
+    "id": "msdmichael001",
+    "created": 1785700000000,
+    "done": false,
+    "title": "Host the Dundie Awards at Chili's",
+    "description": "Reserve the big table. Write custom awards. Do NOT let anyone drive home who has had one too many. Best. Show. Ever.",
+    "priority": "High",
+    "due": "2026-08-18",
+    "category": "work",
+    "size": "l"
+  },
+  {
+    "id": "msdmichael002",
+    "created": 1785701200000,
+    "done": false,
+    "title": "Prep quarterly numbers for the branch review",
+    "description": "Corporate (Jan) is asking again. Ask Oscar to actually do the math. Would I rather be feared or loved? Easy — both.",
+    "priority": "High",
+    "due": "2026-08-10",
+    "category": "work",
+    "size": "m"
+  },
+  {
+    "id": "msdmichael003",
+    "created": 1785702400000,
+    "done": false,
+    "title": "Finish the screenplay: Threat Level Midnight",
+    "description": "Agent Michael Scarn returns. Just need the golden bullet scene and the Scarn dance. It only took 11 years so far.",
+    "priority": "Medium",
+    "due": "",
+    "category": "career",
+    "size": "xl"
+  },
+  {
+    "id": "msdmichael004",
+    "created": 1785703600000,
+    "done": false,
+    "title": "Update LinkedIn headline to 'World's Best Boss'",
+    "description": "It's official — I bought the mug, so it's basically certified.",
+    "priority": "Low",
+    "due": "",
+    "category": "career",
+    "size": "xs"
+  },
+  {
+    "id": "msdmichael005",
+    "created": 1785704800000,
+    "done": false,
+    "title": "Plan the perfect proposal for Holly",
+    "description": "Every candle in the office. All of them. Fire marshal be damned. She is my soulmate.",
+    "priority": "High",
+    "due": "2026-09-14",
+    "category": "family",
+    "size": "l"
+  },
+  {
+    "id": "msdmichael006",
+    "created": 1785706000000,
+    "done": false,
+    "title": "Call Mom on her birthday",
+    "description": "Do not forget again. She still brings up 1998.",
+    "priority": "Medium",
+    "due": "2026-08-17",
+    "category": "family",
+    "size": "xs"
+  },
+  {
+    "id": "msdmichael007",
+    "created": 1785707200000,
+    "done": false,
+    "title": "Sign up for the Second City improv class",
+    "description": "Rule one of improv: never say no. Rule two: always have a gun in the scene.",
+    "priority": "Low",
+    "due": "",
+    "category": "hobbies",
+    "size": "s"
+  },
+  {
+    "id": "msdmichael008",
+    "created": 1785708400000,
+    "done": false,
+    "title": "Buy a replacement 'World's Best Boss' mug",
+    "description": "The old one has a chip. A boss of my caliber cannot be seen with a chipped mug.",
+    "priority": "Medium",
+    "due": "2026-08-18",
+    "category": "essentials",
+    "size": "xs"
+  },
+  {
+    "id": "msdmichael009",
+    "created": 1785709600000,
+    "done": false,
+    "title": "Renew the Sebring's registration",
+    "description": "The convertible needs to be street legal before the next Scranton cruise. Little Kid Lover license plate frame stays.",
+    "priority": "High",
+    "due": "2026-08-14",
+    "category": "essentials",
+    "size": "s"
+  },
+  {
+    "id": "msdmichael010",
+    "created": 1785710800000,
+    "done": false,
+    "title": "Meet financial advisor about the condo",
+    "description": "Two bed, two bath, second bedroom is a gym / recording studio / screening room. It has a Murphy bed AND a foldout couch.",
+    "priority": "Medium",
+    "due": "2026-09-01",
+    "category": "investments",
+    "size": "m"
+  },
+  {
+    "id": "msdmichael011",
+    "created": 1785712000000,
+    "done": false,
+    "title": "Diversify out of Dunder Mifflin stock",
+    "description": "Ryan says paper is dying. Ryan also invented WUPHF, so... hold. Maybe.",
+    "priority": "Low",
+    "due": "",
+    "category": "investments",
+    "size": "m"
+  },
+  {
+    "id": "msdmichael012",
+    "created": 1785713200000,
+    "done": false,
+    "title": "Start an emergency fund (goal: pay off Chili's tab)",
+    "description": "Also budget for Pretzel Day. Do not underestimate Pretzel Day.",
+    "priority": "Medium",
+    "due": "",
+    "category": "savings",
+    "size": "l"
+  },
+  {
+    "id": "msdmichael013",
+    "created": 1785714400000,
+    "done": false,
+    "title": "Declare bankruptcy",
+    "description": "Just walk into the office and shout 'I DECLARE BANKRUPTCY!' Oscar says that's not how it works. Oscar is wrong.",
+    "priority": "Low",
+    "due": "",
+    "category": "",
+    "size": "xs"
+  },
+  {
+    "id": "msdmichael014",
+    "created": 1785715600000,
+    "done": false,
+    "title": "Book the Sandals Jamaica trip",
+    "description": "Waiting on the promo pricing before pulling the trigger. It's a big commitment. Bigger than the condo.",
+    "priority": "Low",
+    "due": "",
+    "category": "hobbies",
+    "size": "xl",
+    "awaiting": true,
+    "awaitNote": "Waiting on the winter promo rate to drop and for a travel buddy to confirm",
+    "awaitUntil": "2026-09-20"
+  },
+  {
+    "id": "msdmichael015",
+    "created": 1785716800000,
+    "done": false,
+    "title": "Get Toby transferred to Costa Rica",
+    "description": "Corporate keeps stalling. NO, God! NO, God, please, NO!",
+    "priority": "Medium",
+    "due": "",
+    "category": "work",
+    "size": "s",
+    "awaiting": true,
+    "awaitNote": "Blocked by HR — waiting on Toby's transfer paperwork to clear",
+    "awaitUntil": "2026-10-05"
+  }
+]

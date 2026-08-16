@@ -1,0 +1,35 @@
+[
+  {
+    "id": "msdmichaeld01",
+    "created": 1785600000000,
+    "done": true,
+    "title": "Win the office 'Fun Run' race for the cure",
+    "description": "Rabies awareness. Carbo-loaded with fettuccine alfredo beforehand — strategic error. Still finished.",
+    "priority": "High",
+    "due": "2026-08-05",
+    "category": "hobbies",
+    "size": "m"
+  },
+  {
+    "id": "msdmichaeld02",
+    "created": 1785601500000,
+    "done": true,
+    "title": "Grill foot fully healed from George Foreman incident",
+    "description": "I like to wake up to the smell of bacon. Lesson learned about the foot-of-the-bed setup.",
+    "priority": "Medium",
+    "due": "",
+    "category": "essentials",
+    "size": "s"
+  },
+  {
+    "id": "msdmichaeld03",
+    "created": 1785603000000,
+    "done": true,
+    "title": "Give a Dundie for 'Hottest in the Office'",
+    "description": "Presented with dignity and a full musical intro. A classic.",
+    "priority": "Low",
+    "due": "",
+    "category": "work",
+    "size": "xs"
+  }
+]
