@@ -14,8 +14,16 @@
     --done-bg:#f0f2f4; --shadow: 0 1px 2px rgba(0,0,0,.06), 0 4px 14px rgba(0,0,0,.05);
     --radius: 10px;
   }
+  /* Dark palette. Applied when the user explicitly picks Dark, OR — in System mode / before the
+     theme attribute is set — when the OS prefers dark. Forcing Light opts out of the media query. */
+  :root[data-theme="dark"] {
+    --bg:#0f1216; --panel:#171b21; --ink:#e6e9ee; --muted:#9aa4b2;
+    --line:#262c34; --accent:#5b8dff; --accent-ink:#0b0d10;
+    --chip:#1e2430; --chip-ink:#9db4ff;
+    --done-bg:#12161b; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35);
+  }
   @media (prefers-color-scheme: dark) {
-    :root {
+    :root:not([data-theme="light"]):not([data-theme="dark"]) {
       --bg:#0f1216; --panel:#171b21; --ink:#e6e9ee; --muted:#9aa4b2;
       --line:#262c34; --accent:#5b8dff; --accent-ink:#0b0d10;
       --chip:#1e2430; --chip-ink:#9db4ff;
@@ -104,7 +112,8 @@
   .search { min-width:200px; flex:1; }
   /* hamburger trigger + in-menu legend section */
   .hamburger { font-size:18px; line-height:1; padding:6px 11px; }
-  .menu-item.legend-toggle { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .menu-item.legend-toggle, .menu-item.theme-toggle { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .menu-item.theme-toggle b { font-weight:600; }
   .menu-caret { color:var(--muted); font-size:11px; }
   .legend-block { padding:8px 10px 6px; }
   .lg-list { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; font-size:12px; }
@@ -238,7 +247,8 @@
   .row-wait:hover, .row-pull:hover { border-color:var(--line); color:var(--ink); }
   @media (hover:none){ .row-wait { opacity:1; } }     /* touch devices: always show */
   .chip.await { background:color-mix(in srgb, #8b5cf6 16%, transparent); color:#8b5cf6; border-color:color-mix(in srgb, #8b5cf6 34%, transparent); font-weight:600; }
-  @media (prefers-color-scheme: dark){ .chip.await { color:#b79dff; } }
+  :root[data-theme="dark"] .chip.await { color:#b79dff; }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]):not([data-theme="dark"]) .chip.await { color:#b79dff; } }
   li.todo.awaiting { background:color-mix(in srgb, #8b5cf6 5%, var(--panel)); }
   li.todo.awaiting.done { background: var(--done-bg); }
 
@@ -535,6 +545,20 @@
   const PRIO_ORDER = { High:0, Medium:1, Low:2 };
   const SIZE_ORDER = { xs:0, s:1, m:2, l:3, xl:4 };
   const DEFAULT_CATS = ["work","career","family","hobbies","essentials","investments","savings"];
+
+  /* ---------- theme (light / dark / follow-system) ---------- */
+  const THEME_LS_KEY = "gsd-theme-v1";
+  const THEME_ORDER = ["system","light","dark"];
+  const THEME_META = { system:{icon:"🖥", label:"System"}, light:{icon:"☀️", label:"Light"}, dark:{icon:"🌙", label:"Dark"} };
+  let theme = "system";
+  try { const t = localStorage.getItem(THEME_LS_KEY); if (THEME_ORDER.includes(t)) theme = t; } catch(e){}
+  function applyTheme(){ document.documentElement.setAttribute("data-theme", theme); }
+  function cycleTheme(){
+    theme = THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length];
+    try { localStorage.setItem(THEME_LS_KEY, theme); } catch(e){}
+    applyTheme(); renderMainMenu();
+  }
+  applyTheme();                                   // set as early as possible to avoid a flash
 
   let todos = [];
   let categories = [];             // managed category list (lowercase, unique, ordered)
@@ -927,6 +951,7 @@
       + `<button class="menu-item" data-act="export">⬇ Export backup (.zip)…</button>`
       + `<button class="menu-item" data-act="switch">📂 Switch data folder…</button>`
       + `<div class="menu-sep"></div>`
+      + `<button class="menu-item theme-toggle" data-act="theme" title="Switch theme (System → Light → Dark)">${THEME_META[theme].icon} Theme <b>${THEME_META[theme].label}</b> <span class="menu-caret">↻</span></button>`
       + `<button class="menu-item legend-toggle" data-act="legend" aria-expanded="${legendOpen}">🎨 Legend <span class="menu-caret">${legendOpen?"▾":"▸"}</span></button>`
       + (legendOpen ? `<div class="legend-block">${LEGEND_HTML}</div>` : ``)
       + `<div class="menu-sep"></div>`
@@ -1299,6 +1324,7 @@
   $("#mainMenu").addEventListener("click", e=>{
     const btn = e.target.closest("[data-act]"); if(!btn) return;
     const act = btn.getAttribute("data-act");
+    if(act==="theme"){ cycleTheme(); e.stopPropagation(); return; }                                // cycle theme, keep menu open
     if(act==="legend"){ legendOpen = !legendOpen; renderMainMenu(); e.stopPropagation(); return; }  // toggle legend, keep menu open
     closeMainMenu();
     if(act==="categories") openCatPane();
