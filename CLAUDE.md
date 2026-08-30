@@ -30,9 +30,11 @@ On `file://`, the startup gate always requires choosing a folder before the app 
 Everything lives in `gsd.html` as one IIFE. Key ideas that span the file:
 
 - **Single source array.** All tasks live in one in-memory `todos` array; completed tasks are just
-  flagged `done: true`. The split into `to-do-tasks.json` / `done-tasks.json` happens **only at write
-  time** (`writeToDir`) and is merged back into one array on read (`ingestDir`). Awaiting/deferred
-  tasks also stay in `todos`, flagged `awaiting: true`.
+  flagged `done: true`. The split into `to-do-tasks.json` / `done-tasks.json` / `idea-pipeline.json`
+  happens **only at write time** (`writeToDir`) and is merged back into one array on read
+  (`ingestDir`). Awaiting/deferred tasks also stay in `todos`, flagged `awaiting: true`; **Idea
+  Pipeline** items likewise stay in `todos`, flagged `idea: true` (they carry no `due`/`done` and are
+  the only tasks written to `idea-pipeline.json`).
 - **The `data-gsd/` folder is the database.** Every mutation calls `saveLocal()` →  `persist()`,
   which write-throughs to both `localStorage` (backup/cache) and, if linked, the folder via the File
   System Access API. Writes are per-file (not atomic across files) — an accepted single-user tradeoff.
@@ -57,8 +59,9 @@ Files in `data-gsd/`:
 
 | File | Contents |
 |------|----------|
-| `to-do-tasks.json` | Active (not-done) tasks, including `awaiting` ones. |
+| `to-do-tasks.json` | Active (not-done) tasks, including `awaiting` ones (excludes ideas). |
 | `done-tasks.json` | Completed tasks. |
+| `idea-pipeline.json` | Idea Pipeline items (`idea: true`) — "someday/maybe", no `due`/`done`. |
 | `categories.json` | Managed category list (array of strings). |
 | `meta.json` | `{ app, schemaVersion, updatedAt }` — schema version marker. |
 
@@ -76,6 +79,12 @@ A **task** object:
 
 Awaiting tasks additionally carry `awaiting: true`, `awaitNote`, and `awaitUntil` (a future
 `YYYY-MM-DD` — the task auto-returns to the active list on that date via `reactivateDue()`).
+
+**Idea Pipeline** items carry `idea: true` and omit `due`/`done` (an idea is never scheduled or
+completed). Sending a task to the pipeline (`sendToIdeas`) sets `idea: true` and strips
+`due`/`done`/`awaiting*`; bringing it back (`ideaToTask`) just deletes `idea`. The detail pane hides
+the Due date + Status controls in "idea mode" (`paneIsIdea`), and `rowHtml(t, kind)` renders the
+`idea` row variant (no checkbox, no due chip, `↩`-only action).
 
 ## Schema versioning
 

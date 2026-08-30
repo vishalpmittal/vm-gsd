@@ -48,6 +48,10 @@ Each task has:
   You note *what you're waiting on* and a *bring-back date*; the task lives in a separate **Awaiting**
   section and **returns to the main list automatically on that date**. Use **↩** to pull it back
   immediately.
+- **Idea Pipeline (someday/maybe)** — a separate section for ideas you'd love to work on in the
+  future. Capture one with **+ Add idea**, or hover a task and click **💡** to park it there. Ideas
+  have **no due date and no done status** (just title, description, priority, category, size); use
+  **↩** to move one back to the active list.
 - **Search / filter / sort** — search text; filter by status, category, priority; sort by:
   - **✨ Smart (auto)** — a computed score blending urgency (due date) + priority + a quick-win boost
     for smaller tasks, so the most important-and-urgent tasks rise to the top.
@@ -62,6 +66,7 @@ Each task has:
   - Solid pill = **category**; grey badge = **size** (xs–xl)
   - 📅 Due chip = **urgency**: red = overdue, amber = due within 2 days
   - ⏳ Purple chip = **awaiting** (auto-returns on its bring-back date)
+  - 💡 Teal-tinted row = **Idea Pipeline** (someday/maybe)
   - Completed tasks are dimmed with a strikethrough
 
 ## Your data

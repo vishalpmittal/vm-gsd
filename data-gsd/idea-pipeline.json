@@ -1,0 +1,32 @@
+[
+  {
+    "id": "msdidea001",
+    "created": 1785718000000,
+    "title": "Open a restaurant chain: Hooters, but for families",
+    "description": "Call it something classy. Big portions, bigger heart. I would be the face of the brand.",
+    "priority": "Medium",
+    "category": "career",
+    "size": "xl",
+    "idea": true
+  },
+  {
+    "id": "msdidea002",
+    "created": 1785719200000,
+    "title": "Invent 'Michael Scott Paper Company' 2.0",
+    "description": "Lower prices, free deliveries in the PT Cruiser, and Bob Vance for warmth. It worked once.",
+    "priority": "Low",
+    "category": "investments",
+    "size": "l",
+    "idea": true
+  },
+  {
+    "id": "msdidea003",
+    "created": 1785720400000,
+    "title": "Write a book: 'Somehow I Manage'",
+    "description": "Management wisdom for the ages. Chapter one: the Golden Rule, but I add a second Golden Rule.",
+    "priority": "Low",
+    "category": "hobbies",
+    "size": "m",
+    "idea": true
+  }
+]

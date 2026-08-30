@@ -236,16 +236,16 @@
   .gate-actions button { padding:11px 18px; font-size:14px; }
   .gate-file { font-weight:600; color:var(--ink); }
 
-  /* awaiting — row action, chip, section & modal */
-  .row-wait, .row-pull {
+  /* awaiting / idea — row action, chip, section & modal */
+  .row-wait, .row-pull, .row-idea {
     flex:0 0 auto; padding:4px 8px; font-size:15px; line-height:1;
     background:transparent; border:1px solid transparent; border-radius:8px;
     color:var(--muted); transition:opacity .12s ease, border-color .12s ease, color .12s ease;
   }
-  .row-wait { opacity:0; }                            /* like duplicate: reveal on hover/focus */
-  li.todo:hover .row-wait, .row-wait:focus-visible { opacity:1; }
-  .row-wait:hover, .row-pull:hover { border-color:var(--line); color:var(--ink); }
-  @media (hover:none){ .row-wait { opacity:1; } }     /* touch devices: always show */
+  .row-wait, .row-idea { opacity:0; }                 /* like duplicate: reveal on hover/focus */
+  li.todo:hover .row-wait, li.todo:hover .row-idea, .row-wait:focus-visible, .row-idea:focus-visible { opacity:1; }
+  .row-wait:hover, .row-pull:hover, .row-idea:hover { border-color:var(--line); color:var(--ink); }
+  @media (hover:none){ .row-wait, .row-idea { opacity:1; } }   /* touch devices: always show */
   .chip.await { background:color-mix(in srgb, #8b5cf6 16%, transparent); color:#8b5cf6; border-color:color-mix(in srgb, #8b5cf6 34%, transparent); font-weight:600; }
   :root[data-theme="dark"] .chip.await { color:#b79dff; }
   @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]):not([data-theme="dark"]) .chip.await { color:#b79dff; } }
@@ -263,6 +263,24 @@
     border-radius:999px; padding:1px 9px; font-size:12px;
   }
   .await-head .await-hint { font-weight:400; font-size:12px; color:var(--muted); }
+
+  /* idea pipeline — a "someday/maybe" bucket; teal accent to stand apart from awaiting's purple */
+  .idea-section { margin-top:24px; }
+  .idea-head {
+    display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:14px;
+    margin:0 0 12px; padding-top:16px; border-top:1px dashed var(--line);
+    color:var(--muted); font-weight:600;
+  }
+  .idea-head .idea-count {
+    font-weight:700; color:#0d9488; background:color-mix(in srgb, #0d9488 14%, transparent);
+    border-radius:999px; padding:1px 9px; font-size:12px;
+  }
+  .idea-head .idea-hint { font-weight:400; font-size:12px; color:var(--muted); }
+  .idea-head .idea-add { margin-left:auto; font-size:12px; padding:5px 11px; font-weight:600; }
+  :root[data-theme="dark"] .idea-head .idea-count { color:#2dd4bf; }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]):not([data-theme="dark"]) .idea-head .idea-count { color:#2dd4bf; } }
+  li.todo.idea { background:color-mix(in srgb, #0d9488 6%, var(--panel)); }
+  .empty.idea-empty { padding:18px; }
 
   .await-modal { position:fixed; inset:0; z-index:40; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(10,12,16,.55); backdrop-filter:blur(3px); }
   .await-modal.open { display:flex; }
@@ -354,6 +372,14 @@
       <span class="await-hint">— returns to the to-do list automatically on its bring-back date</span></h2>
     <ul class="todos awaiting" id="awaitList"></ul>
   </section>
+
+  <section class="idea-section" id="ideaSection">
+    <h2 class="idea-head">💡 Idea Pipeline <span class="idea-count" id="ideaCount">0</span>
+      <span class="idea-hint">— someday/maybe ideas, no due date</span>
+      <button type="button" class="idea-add" id="ideaAddBtn">+ Add idea</button></h2>
+    <ul class="todos idea" id="ideaList"></ul>
+    <div class="empty idea-empty" id="ideaEmpty" style="display:none">No ideas yet — capture one with “+ Add idea”.</div>
+  </section>
 </div>
 
 <button class="fab" id="fab" aria-label="Add task" title="Add task">+</button>
@@ -378,7 +404,7 @@
         <label for="d-priority">Priority</label>
         <select id="d-priority"><option>High</option><option>Medium</option><option>Low</option></select>
       </div>
-      <div>
+      <div id="d-dueWrap">
         <label for="d-due">Due date</label>
         <input id="d-due" type="date" />
       </div>
@@ -452,6 +478,7 @@
         <li><span class="term">Size</span> — effort estimate <code>xs</code>–<code>xl</code>, shown as a grey badge. Smaller = a quick-win nudge in Smart sort.</li>
         <li><span class="term">Due date</span> — optional. The 📅 chip turns <span style="color:var(--p-med)">amber</span> within 2 days and <span style="color:var(--p-high)">red</span> once overdue.</li>
         <li><span class="term">Awaiting</span> — a deferred / waiting-on state with a note and a bring-back date; the task auto-returns to the list on that date (⏳ to defer, ↩ to pull back now).</li>
+        <li><span class="term">Idea Pipeline</span> — a “someday/maybe” list of ideas to work on later. Ideas have no due date and no done status (💡 to park a task there, ↩ to move it back).</li>
         <li><span class="term">Done</span> — completed; shown dimmed with a strikethrough and sunk to the bottom.</li>
         <li><span class="term">Smart score</span> — the number behind ✨ Smart sort (see below).</li>
       </ul>
@@ -464,9 +491,10 @@
         <li><b>Edit / delete</b> — click any row to reopen that pane pre-filled; edit, toggle done, or delete.</li>
         <li><b>Duplicate</b> — hover a row and click <b>⧉</b> to clone it as “copy of - …”.</li>
         <li><b>Awaiting</b> — hover a row and click <b>⏳</b> to defer with a note + bring-back date; it returns automatically.</li>
+        <li><b>Idea Pipeline</b> — capture “someday/maybe” ideas with <b>+ Add idea</b>, or hover a task and click <b>💡</b> to park it there; <b>↩</b> moves an idea back to the to-do list.</li>
         <li><b>Categories</b> — the hamburger → <b>🗂 Categories</b> pane adds / renames / deletes categories (CRUD).</li>
         <li><b>Search · filter · sort</b> — search text; filter by status / category / priority; sort by Smart, Due, Priority, Size, Category or Created.</li>
-        <li><b>Auto-save</b> — every change writes straight to your <code>data-gsd/</code> folder (to-do / done / categories JSON files), with a localStorage backup.</li>
+        <li><b>Auto-save</b> — every change writes straight to your <code>data-gsd/</code> folder (to-do / done / ideas / categories JSON files), with a localStorage backup.</li>
         <li><b>Unsaved-changes guard</b> — closing the editor with pending edits prompts before discarding.</li>
       </ul>
     </section>
@@ -539,9 +567,9 @@
   "use strict";
   const LS_KEY = "gsd-todos-v1";
   const CAT_LS_KEY = "gsd-cats-v1";
-  const DATA_FILES = { active:"to-do-tasks.json", done:"done-tasks.json", cats:"categories.json" };
+  const DATA_FILES = { active:"to-do-tasks.json", done:"done-tasks.json", ideas:"idea-pipeline.json", cats:"categories.json" };
   const META_FILE = "meta.json";                // records the folder's data schema version
-  const SCHEMA_VERSION = 2;                      // bump when the data shape changes, and add a MIGRATIONS[n] step
+  const SCHEMA_VERSION = 3;                      // bump when the data shape changes, and add a MIGRATIONS[n] step
   const PRIO_ORDER = { High:0, Medium:1, Low:2 };
   const SIZE_ORDER = { xs:0, s:1, m:2, l:3, xl:4 };
   const DEFAULT_CATS = ["work","career","family","hobbies","essentials","investments","savings"];
@@ -585,8 +613,9 @@
   }
   function saveLocal() { persist(); render(); }
 
-  /* ---------- awaiting (defer / waiting-on) ---------- */
+  /* ---------- awaiting (defer / waiting-on) & ideas (someday/maybe) ---------- */
   const isAwaiting = t => !!t.awaiting && !t.done;
+  const isIdea = t => !!t.idea;
   function ymd(d){ const z=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${z(d.getMonth()+1)}-${z(d.getDate())}`; }
   function plusDaysStr(n){ const d=new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate()+n); return ymd(d); }
   const todayStr = () => plusDaysStr(0);
@@ -606,6 +635,20 @@
     t.awaiting = false; delete t.awaitNote; delete t.awaitUntil;
     saveLocal(); flash("Pulled back to to-do");
   }
+  /* Park a task in the Idea Pipeline: ideas carry no due date and no done/awaiting state. */
+  function sendToIdeas(id){
+    const t = todos.find(x=>x.id===id); if(!t) return;
+    t.idea = true; t.done = false;
+    delete t.due; delete t.awaiting; delete t.awaitNote; delete t.awaitUntil;
+    if(currentDetailId===id) closePane();
+    saveLocal(); flash("Moved to Idea Pipeline");
+  }
+  function ideaToTask(id){                    // ↩ bring an idea back to the active to-do list
+    const t = todos.find(x=>x.id===id); if(!t) return;
+    delete t.idea;
+    if(currentDetailId===id) closePane();
+    saveLocal(); flash("Moved to to-do list");
+  }
   function loadLocal() {
     try { const raw = localStorage.getItem(LS_KEY); if (raw) todos = JSON.parse(raw) || []; } catch(e){ todos = []; }
     try { const rawC = localStorage.getItem(CAT_LS_KEY); if (rawC) categories = JSON.parse(rawC) || []; } catch(e){ categories = []; }
@@ -618,14 +661,17 @@
     await w.write(text);
     await w.close();
   }
-  /* Split the single in-memory list back into the folder's three files. Not atomic across files —
-     an acceptable tradeoff for a personal single-user app. */
+  /* Split the single in-memory list back into the folder's files. Ideas (idea:true) go to their own
+     file; the rest split by done. Not atomic across files — an acceptable tradeoff for a personal
+     single-user app. */
   async function writeToDir() {
     if (!dirHandle) return;
-    const active = todos.filter(t=>!t.done);
-    const done   = todos.filter(t=> t.done);
+    const active = todos.filter(t=>!t.done && !t.idea);
+    const done   = todos.filter(t=> t.done && !t.idea);
+    const ideas  = todos.filter(t=> t.idea);
     await writeFileInDir(DATA_FILES.active, JSON.stringify(active, null, 2) + "\n");
     await writeFileInDir(DATA_FILES.done,   JSON.stringify(done,   null, 2) + "\n");
+    await writeFileInDir(DATA_FILES.ideas,  JSON.stringify(ideas,  null, 2) + "\n");
     await writeFileInDir(DATA_FILES.cats,   JSON.stringify(categories, null, 2) + "\n");
     flash("Saved ✓");
   }
@@ -636,11 +682,15 @@
       return text.trim() ? JSON.parse(text) : null;
     } catch(e){ return null; }               // missing or unparseable → treated as empty
   }
-  /* Merge the folder's task files into the single in-memory list; the source file sets `done`. */
-  function ingestDir(active, done, cats){
+  /* Merge the folder's task files into the single in-memory list; the source file sets `done` /
+     `idea`. Ideas are always active (never done) and carry the idea:true flag. */
+  function ingestDir(active, done, ideas, cats){
     const A = Array.isArray(active) ? active : [];
     const D = Array.isArray(done)   ? done   : [];
-    todos = A.map(t=>({ ...t, done:false })).concat(D.map(t=>({ ...t, done:true })));
+    const I = Array.isArray(ideas)  ? ideas  : [];
+    todos = A.map(t=>({ ...t, done:false }))
+      .concat(D.map(t=>({ ...t, done:true })))
+      .concat(I.map(t=>({ ...t, idea:true, done:false })));
     categories = (Array.isArray(cats) && cats.length) ? cats.slice() : (categories.length ? categories : [...DEFAULT_CATS]);
     reconcileCategories();
   }
@@ -674,6 +724,19 @@
       if (!Array.isArray(data.categories)) data.categories = [];
       return data;
     },
+    // 2 → 3: introduces the Idea Pipeline (its own idea-pipeline.json). Older folders have no ideas,
+    //        so there's nothing to transform — this just self-heals any idea-flagged task to the
+    //        well-formed shape (never done, no due / awaiting bookkeeping). The version bump itself
+    //        is what makes load re-stamp meta.json to v3 and create the new file.
+    3: (data) => {
+      data.todos = (Array.isArray(data.todos) ? data.todos : []).map(t => {
+        if (!t.idea) return t;
+        const n = { ...t, idea:true, done:false };
+        delete n.due; delete n.awaiting; delete n.awaitNote; delete n.awaitUntil;
+        return n;
+      });
+      return data;
+    },
   };
   function migrate(data, fromVersion){       // apply every step from fromVersion up to SCHEMA_VERSION
     for (let v = fromVersion; v < SCHEMA_VERSION; v++){
@@ -693,7 +756,7 @@
   async function backupBeforeMigrate(fromVersion){
     try {
       const entries = [];
-      for (const nm of [DATA_FILES.active, DATA_FILES.done, DATA_FILES.cats, META_FILE]){
+      for (const nm of [DATA_FILES.active, DATA_FILES.done, DATA_FILES.ideas, DATA_FILES.cats, META_FILE]){
         try { const fh = await dirHandle.getFileHandle(nm); entries.push({ name:nm, text: await (await fh.getFile()).text() }); }
         catch(e){ /* file absent — skip */ }
       }
@@ -706,8 +769,8 @@
     } catch(e){ return null; }
   }
   /* Ingest folder data, then upgrade it to the latest schema (backing up first) if it's older. */
-  async function ingestAndMigrate(active, done, cats, version){
-    ingestDir(active, done, cats);
+  async function ingestAndMigrate(active, done, ideas, cats, version){
+    ingestDir(active, done, ideas, cats);
     if (version > SCHEMA_VERSION){ flash(`⚠ Data is v${version}; app understands v${SCHEMA_VERSION} — loaded as-is`); return; }
     if (version < SCHEMA_VERSION){
       const backup = await backupBeforeMigrate(version);
@@ -747,14 +810,15 @@
     const version = await readVersion();
     const active = await readFileInDir(DATA_FILES.active);
     const done   = await readFileInDir(DATA_FILES.done);
+    const ideas  = await readFileInDir(DATA_FILES.ideas);
     const cats   = await readFileInDir(DATA_FILES.cats);
-    const fileCount = (Array.isArray(active)?active.length:0) + (Array.isArray(done)?done.length:0);
+    const fileCount = (Array.isArray(active)?active.length:0) + (Array.isArray(done)?done.length:0) + (Array.isArray(ideas)?ideas.length:0);
     if (fileCount === 0 && todos.length > 0) {                            // safeguard against the empty-folder wipe
       if (Array.isArray(cats)) cats.forEach(c => { if (c && !categories.includes(c)) categories.push(c); });
       await writeToDir(); await writeMeta();
       return;
     }
-    await ingestAndMigrate(active, done, cats, version);
+    await ingestAndMigrate(active, done, ideas, cats, version);
   }
 
   /* Adopt a freshly-picked directory as the live data folder: read existing data (or seed), then auto-save. */
@@ -764,10 +828,11 @@
     const version = await readVersion();
     const active = await readFileInDir(DATA_FILES.active);
     const done   = await readFileInDir(DATA_FILES.done);
+    const ideas  = await readFileInDir(DATA_FILES.ideas);
     const cats   = await readFileInDir(DATA_FILES.cats);
-    const fileCount = (Array.isArray(active)?active.length:0) + (Array.isArray(done)?done.length:0);
+    const fileCount = (Array.isArray(active)?active.length:0) + (Array.isArray(done)?done.length:0) + (Array.isArray(ideas)?ideas.length:0);
     if (fileCount > 0) {
-      await ingestAndMigrate(active, done, cats, version);   // folder is the source of truth (migrated if older)
+      await ingestAndMigrate(active, done, ideas, cats, version);   // folder is the source of truth (migrated if older)
     } else if (Array.isArray(cats)) {
       cats.forEach(c => { if (c && !categories.includes(c)) categories.push(c); });  // keep app tasks, adopt folder cats
     }
@@ -844,7 +909,7 @@
     } else { // "select"
       html = `<div class="gate-card"><div class="gate-logo">🗂</div>
         <h2>Choose your data folder</h2>
-        <p>Your tasks live in a <span class="gate-file">data-gsd/</span> folder on your computer — a JSON file each for to-do, done and categories — saved automatically on every change. Pick that folder to begin; an empty folder will be set up for you.</p>
+        <p>Your tasks live in a <span class="gate-file">data-gsd/</span> folder on your computer — a JSON file each for to-do, done, ideas and categories — saved automatically on every change. Pick that folder to begin; an empty folder will be set up for you.</p>
         <div class="gate-actions">
           <button class="primary" data-gate="choose">📂 Choose data folder</button>
         </div></div>`;
@@ -895,11 +960,13 @@
   /* The files that go into a backup zip — the live data-gsd/ store, mirrored under a data-gsd/ folder
      so unzipping restores a ready-to-use folder. */
   function backupFiles(){
-    const active = todos.filter(t=>!t.done);
-    const done   = todos.filter(t=> t.done);
+    const active = todos.filter(t=>!t.done && !t.idea);
+    const done   = todos.filter(t=> t.done && !t.idea);
+    const ideas  = todos.filter(t=> t.idea);
     return [
       { name:"data-gsd/"+DATA_FILES.active, text: JSON.stringify(active, null, 2) + "\n" },
       { name:"data-gsd/"+DATA_FILES.done,   text: JSON.stringify(done,   null, 2) + "\n" },
+      { name:"data-gsd/"+DATA_FILES.ideas,  text: JSON.stringify(ideas,  null, 2) + "\n" },
       { name:"data-gsd/"+DATA_FILES.cats,   text: JSON.stringify(categories, null, 2) + "\n" },
       { name:"data-gsd/"+META_FILE,         text: metaJson() },     // carry the schema version in the backup
     ];
@@ -932,6 +999,7 @@
       <li><span class="lg-sw"><span class="lg-badge">SM</span></span> Grey badge = <b>Size</b> (xs–xl)</li>
       <li><span class="lg-sw"><span class="lg-chip" style="color:var(--p-high)">📅</span></span> <b>Due</b> — red overdue, amber ≤ 2d</li>
       <li><span class="lg-sw"><span class="lg-chip" style="color:#8b5cf6">⏳</span></span> <b>Awaiting</b> — auto-returns</li>
+      <li><span class="lg-sw"><span class="lg-chip" style="color:#0d9488">💡</span></span> <b>Idea Pipeline</b> — someday/maybe</li>
       <li><span class="lg-sw" style="width:16px">✓</span> Strikethrough = <b>done</b></li>
     </ul>`;
   function renderMainMenu(){
@@ -972,10 +1040,10 @@
     if (todos.length) return;
     try {
       const grab = n => fetch("data-gsd/" + n, {cache:"no-store"}).then(r => r.ok ? r.json() : null).catch(()=>null);
-      const [active, done, cats, meta] = await Promise.all([grab(DATA_FILES.active), grab(DATA_FILES.done), grab(DATA_FILES.cats), grab(META_FILE)]);
-      const count = (Array.isArray(active)?active.length:0) + (Array.isArray(done)?done.length:0);
+      const [active, done, ideas, cats, meta] = await Promise.all([grab(DATA_FILES.active), grab(DATA_FILES.done), grab(DATA_FILES.ideas), grab(DATA_FILES.cats), grab(META_FILE)]);
+      const count = (Array.isArray(active)?active.length:0) + (Array.isArray(done)?done.length:0) + (Array.isArray(ideas)?ideas.length:0);
       if (count > 0) {
-        ingestDir(active, done, cats);
+        ingestDir(active, done, ideas, cats);
         const mv = meta && Number(meta.schemaVersion);
         const version = (Number.isInteger(mv) && mv > 0) ? mv : 1;
         if (version < SCHEMA_VERSION) { const m = migrate({ todos, categories }, version); todos = m.todos; categories = m.categories; reconcileCategories(); }
@@ -991,10 +1059,12 @@
     const s=$("#status");
     if (s.dataset.flash){ s.innerHTML = esc(s.dataset.flash); return; }
     const awaiting = todos.filter(isAwaiting).length;
-    const active = todos.filter(t=>!t.done && !isAwaiting(t)).length;
-    s.innerHTML = awaiting
-      ? `<b>${active}</b> active · <b>${awaiting}</b> awaiting · <b>${todos.length}</b> total`
-      : `<b>${active}</b> active · <b>${todos.length}</b> total`;
+    const ideas = todos.filter(isIdea).length;
+    const active = todos.filter(t=>!t.done && !isAwaiting(t) && !isIdea(t)).length;
+    s.innerHTML = `<b>${active}</b> active`
+      + (awaiting ? ` · <b>${awaiting}</b> awaiting` : ``)
+      + (ideas ? ` · <b>${ideas}</b> ideas` : ``)
+      + ` · <b>${todos.length}</b> total`;
   }
   function allCategories(){ return [...categories]; }
   function refreshCatFilters(){
@@ -1042,18 +1112,25 @@
   }
 
   /* ---------- render ---------- */
-  /* One row renderer for both lists. `awaiting` swaps the trailing action (⏳→↩), shows the
-     bring-back chip, and prefers the awaiting note for the hover tooltip / 💬 marker. */
-  function rowHtml(t, awaiting){
-    const dm = dueMeta(t.due);
+  /* One row renderer for all three lists. `kind` is task | awaiting | idea:
+     - awaiting swaps the trailing action (⏳→↩), shows the bring-back chip, and prefers the awaiting
+       note for the hover tooltip / 💬 marker;
+     - idea has no checkbox and no due chip (ideas carry neither done nor due), and its only action is
+       ↩ to move it back to the to-do list. */
+  function rowHtml(t, kind="task"){
+    const awaiting = kind === "awaiting", idea = kind === "idea";
+    const dm = idea ? null : dueMeta(t.due);
     const desc = awaiting ? (t.awaitNote || t.description) : t.description;
     const back = awaiting ? dueMeta(t.awaitUntil) : null;
     const tail = awaiting
       ? `<button class="row-pull" type="button" data-act="pull" title="Pull back to to-do now" aria-label="Pull back to to-do now">↩</button>`
+      : idea
+      ? `<button class="row-pull" type="button" data-act="toTask" title="Move to to-do list" aria-label="Move to to-do list">↩</button>`
       : `<button class="row-wait" type="button" data-act="wait" title="Move to awaiting" aria-label="Move to awaiting">⏳</button>
+        <button class="row-idea" type="button" data-act="idea" title="Send to Idea Pipeline" aria-label="Send to Idea Pipeline">💡</button>
         <button class="row-dup" type="button" data-act="dup" title="Duplicate task" aria-label="Duplicate task">⧉</button>`;
-    return `<li class="todo ${awaiting?"awaiting ":""}p-${esc(t.priority)} ${t.done?"done":""} ${t.id===currentDetailId?"selected":""}" data-id="${t.id}"${desc?` data-desc="${esc(desc)}"`:""}>
-        <input class="check" type="checkbox" ${t.done?"checked":""} aria-label="Done" data-act="toggle" />
+    return `<li class="todo ${awaiting?"awaiting ":""}${idea?"idea ":""}p-${esc(t.priority)} ${t.done?"done":""} ${t.id===currentDetailId?"selected":""}" data-id="${t.id}"${desc?` data-desc="${esc(desc)}"`:""}>
+        ${idea ? "" : `<input class="check" type="checkbox" ${t.done?"checked":""} aria-label="Done" data-act="toggle" />`}
         <div class="main">
           <span class="title" title="${esc(t.title)}">${esc(t.title)}</span>
           <span class="meta">
@@ -1089,9 +1166,9 @@
       return true;
     };
 
-    // ---- main to-do list (awaiting tasks are excluded) ----
+    // ---- main to-do list (awaiting + idea tasks are excluded) ----
     let items = todos.filter(t=>{
-      if(isAwaiting(t)) return false;
+      if(isAwaiting(t) || isIdea(t)) return false;
       if(fStatus==="active" && t.done) return false;
       if(fStatus==="done" && !t.done) return false;
       return matchesContent(t);
@@ -1108,21 +1185,32 @@
         default: return cmpDue(a,b);
       }
     });
-    $("#list").innerHTML = items.map(t=>rowHtml(t,false)).join("");
+    $("#list").innerHTML = items.map(t=>rowHtml(t,"task")).join("");
     $("#empty").style.display = items.length ? "none" : "block";
 
     // ---- awaiting section (soonest bring-back date first) ----
     let awaitingItems = todos.filter(t=> isAwaiting(t) && matchesContent(t));
     awaitingItems.sort((a,b)=> (a.awaitUntil||"").localeCompare(b.awaitUntil||"") || (a.title||"").localeCompare(b.title||""));
-    $("#awaitList").innerHTML = awaitingItems.map(t=>rowHtml(t,true)).join("");
+    $("#awaitList").innerHTML = awaitingItems.map(t=>rowHtml(t,"awaiting")).join("");
     $("#awaitSection").style.display = awaitingItems.length ? "block" : "none";
     $("#awaitCount").textContent = awaitingItems.length;
+
+    // ---- idea pipeline section (always shown; highest priority first, then newest) ----
+    let ideaItems = todos.filter(t=> isIdea(t) && matchesContent(t));
+    ideaItems.sort((a,b)=> (PRIO_ORDER[a.priority]-PRIO_ORDER[b.priority]) || (b.created||0)-(a.created||0));
+    $("#ideaList").innerHTML = ideaItems.map(t=>rowHtml(t,"idea")).join("");
+    $("#ideaEmpty").textContent = todos.some(isIdea)
+      ? "No ideas match the current search / filters."
+      : "No ideas yet — capture one with “+ Add idea”.";
+    $("#ideaEmpty").style.display = ideaItems.length ? "none" : "block";
+    $("#ideaCount").textContent = ideaItems.length;
 
     updateStatus();
   }
 
   /* ---------- side pane (handles BOTH add + edit) ---------- */
   let currentDetailId = null;   // null = add mode; an id = edit mode
+  let paneIsIdea = false;       // true = pane is editing/adding an idea (no due date, no done status)
   let paneBaseline = "";        // field snapshot at open / last save (for dirty check)
   function syncToggleBtn(t){ $("#d-toggle").textContent = t.done ? "↩ Mark not done" : "✓ Mark done"; }
   function snapshot(){ return JSON.stringify(readPane()); }
@@ -1146,9 +1234,10 @@
   function showPane(){ closeCatPane(); closeAboutPane(); $("#detailPane").classList.add("open"); $("#detailPane").setAttribute("aria-hidden","false"); $("#paneBackdrop").classList.add("open"); }
 
   function openPaneAdd(){
-    currentDetailId = null;
+    currentDetailId = null; paneIsIdea = false;
     $("#paneTitle").textContent = "Add task";
     setPaneFields({});                       // defaults
+    $("#d-dueWrap").style.display = "";
     $("#d-statusWrap").style.display = "none";
     $("#d-created").style.display = "none";
     $("#d-delete").style.display = "none";
@@ -1158,13 +1247,29 @@
     setTimeout(()=> $("#d-title").focus(), 40);
     render();
   }
+  /* Add an idea directly — same pane, but no due date and no done status. */
+  function openPaneAddIdea(){
+    currentDetailId = null; paneIsIdea = true;
+    $("#paneTitle").textContent = "Add idea";
+    setPaneFields({});                       // defaults
+    $("#d-dueWrap").style.display = "none";
+    $("#d-statusWrap").style.display = "none";
+    $("#d-created").style.display = "none";
+    $("#d-delete").style.display = "none";
+    $("#d-save").textContent = "Add idea";
+    paneBaseline = snapshot();
+    showPane();
+    setTimeout(()=> $("#d-title").focus(), 40);
+    render();
+  }
   function openPane(id){
     const t = todos.find(x=>x.id===id); if(!t) return;
-    currentDetailId = id;
-    $("#paneTitle").textContent = "Task details";
+    currentDetailId = id; paneIsIdea = !!t.idea;
+    $("#paneTitle").textContent = paneIsIdea ? "Idea details" : "Task details";
     setPaneFields(t);
-    syncToggleBtn(t);
-    $("#d-statusWrap").style.display = "";
+    if(!paneIsIdea) syncToggleBtn(t);
+    $("#d-dueWrap").style.display = paneIsIdea ? "none" : "";
+    $("#d-statusWrap").style.display = paneIsIdea ? "none" : "";
     $("#d-created").style.display = "";
     $("#d-created").textContent = "Created " + new Date(t.created || Date.now()).toLocaleString();
     $("#d-delete").style.display = "";
@@ -1271,7 +1376,7 @@
     if(act==="dup"){                              // duplicate: clone as a fresh, active (non-awaiting) task
       const t=todos.find(x=>x.id===id);
       if(t){
-        const { id:_id, created:_created, done:_done, awaiting:_a, awaitNote:_n, awaitUntil:_u, ...rest } = t;
+        const { id:_id, created:_created, done:_done, awaiting:_a, awaitNote:_n, awaitUntil:_u, idea:_i, ...rest } = t;
         todos.push({ id:uid(), created:Date.now(), done:false, ...rest, title:`copy of - ${rest.title}` });
         saveLocal(); flash("Task duplicated");
       }
@@ -1279,10 +1384,14 @@
     }
     if(act==="wait"){ openAwaitModal(id); return; }  // ⏳ move to awaiting
     if(act==="pull"){ pullBack(id); return; }        // ↩ bring an awaiting task back now
+    if(act==="idea"){ sendToIdeas(id); return; }     // 💡 park a task in the Idea Pipeline
+    if(act==="toTask"){ ideaToTask(id); return; }    // ↩ bring an idea back to the to-do list
     openPane(id);                                  // any other click on the row opens the pane
   }
   $("#list").addEventListener("click", onRowClick);
   $("#awaitList").addEventListener("click", onRowClick);
+  $("#ideaList").addEventListener("click", onRowClick);
+  $("#ideaAddBtn").addEventListener("click", openPaneAddIdea);
 
   // ---- await modal (collects note + bring-back date) ----
   let awaitTargetId = null;
@@ -1369,12 +1478,17 @@
   $("#d-save").addEventListener("click", ()=>{
     const data = readPane();
     if(!data.title){ alert("Title is required"); return; }
+    if(paneIsIdea) delete data.due;                        // ideas have no due date
     if(data.category && !categories.includes(data.category)) categories.push(data.category);  // register on-the-fly custom category
     if(currentDetailId){                                   // edit existing
       const t = todos.find(x=>x.id===currentDetailId); if(!t) return;
-      Object.assign(t, data); saveLocal(); flash("Task updated");
+      Object.assign(t, data);
+      if(paneIsIdea){ t.idea = true; t.done = false; delete t.due; delete t.awaiting; delete t.awaitNote; delete t.awaitUntil; }
+      saveLocal(); flash(paneIsIdea ? "Idea updated" : "Task updated");
     } else {                                               // add new
-      todos.push({ id:uid(), created:Date.now(), done:false, ...data }); saveLocal(); flash("Task added");
+      const base = { id:uid(), created:Date.now(), done:false, ...data };
+      if(paneIsIdea) base.idea = true;
+      todos.push(base); saveLocal(); flash(paneIsIdea ? "Idea added" : "Task added");
     }
     closePane();                                           // close on save
   });
